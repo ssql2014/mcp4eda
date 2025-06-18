@@ -15,7 +15,7 @@ export function calculateHexagonalPlacement(
 
   // Hexagonal packing parameters
   const horizontalSpacing = dieWidthWithScribe;
-  const verticalSpacing = dieHeightWithScribe * Math.sqrt(3) / 2; // For hexagonal packing
+  const verticalSpacing = dieHeightWithScribe * 0.866; // sqrt(3)/2 for hexagonal packing
 
   let totalDies = 0;
   const diesPerRow: number[] = [];

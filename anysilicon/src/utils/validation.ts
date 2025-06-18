@@ -148,3 +148,27 @@ export function validateCostParams(params: {
     throw new ValidationError('Yield percentage must be between 0 and 100');
   }
 }
+
+export function isDiePerWaferParams(obj: unknown): obj is DiePerWaferParams {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'wafer_diameter' in obj &&
+    'die_width' in obj &&
+    'die_height' in obj &&
+    typeof (obj as any).wafer_diameter === 'number' &&
+    typeof (obj as any).die_width === 'number' &&
+    typeof (obj as any).die_height === 'number'
+  );
+}
+
+export function sanitizeNumericInput(value: unknown): number {
+  if (typeof value !== 'number' || !isFinite(value)) {
+    throw new ValidationError('Invalid numeric input');
+  }
+  // Prevent extremely large numbers that could cause DoS
+  if (Math.abs(value) > 1e6) {
+    throw new ValidationError('Input value exceeds maximum allowed range');
+  }
+  return value;
+}

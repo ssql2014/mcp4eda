@@ -24,8 +24,8 @@ export function calculateYield(params: YieldParams): YieldResult {
   // Murphy model calculation
   let yieldFraction: number;
   
-  if (DA === 0) {
-    yieldFraction = 1; // Perfect yield with no defects
+  if (DA === 0 || alpha === 0) {
+    yieldFraction = DA === 0 ? 1 : 0; // Perfect yield with no defects, or zero with alpha=0
   } else {
     const term = (1 - Math.exp(-DA / alpha)) / (DA / alpha);
     yieldFraction = Math.pow(term, alpha);

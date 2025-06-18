@@ -11,7 +11,7 @@ import {
 import { calculateDiePerWafer, compareAlgorithms } from './calculations/diePerWafer.js';
 import { calculateYield } from './calculations/yieldCalculator.js';
 import { STANDARD_WAFER_SIZES } from './config/defaults.js';
-import { validateDiePerWaferParams } from './utils/validation.js';
+import { validateDiePerWaferParams, isDiePerWaferParams } from './utils/validation.js';
 import { AnySiliconError } from './errors/index.js';
 import type {
   DiePerWaferParams,
@@ -39,8 +39,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case 'calculate_die_per_wafer': {
-        const params = args as unknown as DiePerWaferParams;
-        const result = calculateDiePerWafer(params);
+        if (!isDiePerWaferParams(args)) {
+          throw new McpError(ErrorCode.InvalidParams, 'Invalid parameters for calculate_die_per_wafer');
+        }
+        const result = calculateDiePerWafer(args);
         return {
           content: [
             {
