@@ -35,6 +35,31 @@ Add to your Claude Desktop configuration:
 }
 ```
 
+### Available Resources
+
+#### 1. wafer://standards/sizes
+Standard wafer sizes with typical applications and defect density ranges.
+
+#### 2. wafer://standards/defect-density  
+Typical defect density ranges for different semiconductor process nodes.
+
+#### 3. wafer://formulas/die-per-wafer
+Mathematical formulas and algorithms used for die per wafer calculations.
+
+### Available Prompts
+
+#### 1. quick-calculation
+Quick die per wafer calculation for common scenarios.
+- Parameters: `wafer_size`, `die_size` (e.g., "10x10")
+
+#### 2. yield-analysis
+Analyze yield for a specific die and process node.
+- Parameters: `process_node` (e.g., "7nm"), `die_area`
+
+#### 3. optimization-study
+Find optimal die size for maximizing wafer utilization.
+- Parameters: `wafer_size`, `target_dies` (optional)
+
 ### Available Tools
 
 #### 1. calculate_die_per_wafer

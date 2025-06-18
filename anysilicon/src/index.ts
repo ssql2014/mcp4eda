@@ -5,6 +5,9 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+  ListPromptsRequestSchema,
+  GetPromptRequestSchema,
   ErrorCode,
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
@@ -28,6 +31,7 @@ const server = new Server(
     capabilities: {
       tools: {},
       resources: {},
+      prompts: {},
     },
   }
 );
@@ -259,8 +263,234 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
         description: 'Information about standard wafer sizes and their applications',
         mimeType: 'application/json',
       },
+      {
+        uri: 'wafer://standards/defect-density',
+        name: 'Typical Defect Densities',
+        description: 'Typical defect density ranges for different process nodes',
+        mimeType: 'application/json',
+      },
+      {
+        uri: 'wafer://formulas/die-per-wafer',
+        name: 'Die Per Wafer Formulas',
+        description: 'Mathematical formulas used for die per wafer calculations',
+        mimeType: 'text/markdown',
+      },
     ],
   };
+});
+
+// Read resource handler
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const { uri } = request.params;
+  
+  switch (uri) {
+    case 'wafer://standards/sizes':
+      return {
+        contents: [{
+          uri,
+          mimeType: 'application/json',
+          text: JSON.stringify(STANDARD_WAFER_SIZES, null, 2),
+        }],
+      };
+      
+    case 'wafer://standards/defect-density':
+      return {
+        contents: [{
+          uri,
+          mimeType: 'application/json',
+          text: JSON.stringify({
+            process_nodes: {
+              '180nm': { min: 0.5, max: 2.0, typical: 1.0, unit: 'defects/cm²' },
+              '130nm': { min: 0.3, max: 1.5, typical: 0.8, unit: 'defects/cm²' },
+              '90nm': { min: 0.2, max: 1.0, typical: 0.5, unit: 'defects/cm²' },
+              '65nm': { min: 0.15, max: 0.8, typical: 0.4, unit: 'defects/cm²' },
+              '45nm': { min: 0.1, max: 0.6, typical: 0.3, unit: 'defects/cm²' },
+              '32nm': { min: 0.08, max: 0.5, typical: 0.2, unit: 'defects/cm²' },
+              '22nm': { min: 0.05, max: 0.3, typical: 0.15, unit: 'defects/cm²' },
+              '14nm': { min: 0.03, max: 0.2, typical: 0.1, unit: 'defects/cm²' },
+              '10nm': { min: 0.02, max: 0.15, typical: 0.08, unit: 'defects/cm²' },
+              '7nm': { min: 0.01, max: 0.1, typical: 0.05, unit: 'defects/cm²' },
+              '5nm': { min: 0.008, max: 0.08, typical: 0.04, unit: 'defects/cm²' },
+              '3nm': { min: 0.005, max: 0.05, typical: 0.025, unit: 'defects/cm²' },
+            },
+          }, null, 2),
+        }],
+      };
+      
+    case 'wafer://formulas/die-per-wafer':
+      return {
+        contents: [{
+          uri,
+          mimeType: 'text/markdown',
+          text: `# Die Per Wafer Calculation Formulas
+
+## Basic Formula
+\`\`\`
+Dies per Wafer = Wafer Area / Die Area × Utilization Factor
+\`\`\`
+
+## Detailed Rectangular Algorithm
+1. Calculate effective diameter: \`D_eff = D_wafer - 2 × edge_exclusion\`
+2. For each row y from -R_eff to +R_eff:
+   - Calculate x range: \`x_max = sqrt(R_eff² - y²)\`
+   - Dies in row: \`floor(2 × x_max / (die_width + scribe))\`
+3. Sum all dies across rows
+
+## Hexagonal Packing Algorithm
+1. Uses offset rows for better packing
+2. Vertical spacing: \`die_height × sqrt(3)/2\`
+3. Odd rows offset by: \`die_width / 2\`
+4. Typically yields 10-15% more dies than rectangular
+
+## Yield Calculations
+
+### Murphy Model
+\`\`\`
+Yield = [(1 - e^(-DA/α))/(DA/α)]^α
+\`\`\`
+Where:
+- D = defect density (defects/cm²)
+- A = die area (cm²)
+- α = clustering factor (typically 3)
+
+### Poisson Model
+\`\`\`
+Yield = e^(-DA)
+\`\`\`
+Simpler model assuming random defect distribution.`,
+        }],
+      };
+      
+    default:
+      throw new McpError(ErrorCode.InvalidRequest, `Unknown resource: ${uri}`);
+  }
+});
+
+// List available prompts
+server.setRequestHandler(ListPromptsRequestSchema, async () => {
+  return {
+    prompts: [
+      {
+        name: 'quick-calculation',
+        description: 'Quick die per wafer calculation for common scenarios',
+        arguments: [
+          {
+            name: 'wafer_size',
+            description: 'Wafer diameter (150, 200, 300, or 450 mm)',
+            required: true,
+          },
+          {
+            name: 'die_size',
+            description: 'Die dimensions in format "widthxheight" (e.g., "10x10")',
+            required: true,
+          },
+        ],
+      },
+      {
+        name: 'yield-analysis',
+        description: 'Analyze yield for a specific die and process',
+        arguments: [
+          {
+            name: 'process_node',
+            description: 'Process node (e.g., "7nm", "14nm")',
+            required: true,
+          },
+          {
+            name: 'die_area',
+            description: 'Die area in mm²',
+            required: true,
+          },
+        ],
+      },
+      {
+        name: 'optimization-study',
+        description: 'Find optimal die size for a wafer',
+        arguments: [
+          {
+            name: 'wafer_size',
+            description: 'Wafer diameter',
+            required: true,
+          },
+          {
+            name: 'target_dies',
+            description: 'Target number of dies',
+            required: false,
+          },
+        ],
+      },
+    ],
+  };
+});
+
+// Get prompt handler
+server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  
+  switch (name) {
+    case 'quick-calculation': {
+      const waferSize = args?.wafer_size || '300';
+      const dieSize = args?.die_size || '10x10';
+      const [width, height] = dieSize.split('x').map(Number);
+      
+      return {
+        description: `Calculate dies per wafer for ${waferSize}mm wafer with ${dieSize}mm dies`,
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: `Calculate how many ${width}x${height}mm dies fit on a ${waferSize}mm wafer using both rectangular and hexagonal algorithms. Include utilization percentage and recommend the best approach.`,
+            },
+          },
+        ],
+      };
+    }
+    
+    case 'yield-analysis': {
+      const processNode = args?.process_node || '7nm';
+      const dieArea = args?.die_area || '100';
+      
+      return {
+        description: `Analyze yield for ${processNode} process with ${dieArea}mm² die`,
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: `For a ${processNode} process with ${dieArea}mm² die area:
+1. Get typical defect density from resources
+2. Calculate yield using both Murphy and Poisson models
+3. Calculate good dies for a 300mm wafer
+4. Provide recommendations for yield improvement`,
+            },
+          },
+        ],
+      };
+    }
+    
+    case 'optimization-study': {
+      const waferSize = args?.wafer_size || '300';
+      const targetDies = args?.target_dies;
+      
+      return {
+        description: `Optimization study for ${waferSize}mm wafer`,
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: targetDies 
+                ? `Find die dimensions that yield approximately ${targetDies} dies on a ${waferSize}mm wafer. Test multiple aspect ratios and both algorithms.`
+                : `Find optimal die sizes for a ${waferSize}mm wafer that maximize utilization. Test sizes from 5x5mm to 20x20mm and compare algorithms.`,
+            },
+          },
+        ],
+      };
+    }
+    
+    default:
+      throw new McpError(ErrorCode.InvalidRequest, `Unknown prompt: ${name}`);
+  }
 });
 
 // Start the server
