@@ -1,68 +1,70 @@
 # AnySilicon MCP Server
 
-An MCP (Model Context Protocol) server for semiconductor die calculations, providing tools for die per wafer calculations, yield analysis, and cost optimization.
+An MCP (Model Context Protocol) server for semiconductor die per wafer calculations, based on the AnySilicon die per wafer formula.
 
 ## Features
 
-- **Die Per Wafer Calculation**: Calculate how many dies fit on a wafer using rectangular or hexagonal placement algorithms
-- **Yield Analysis**: Estimate die yield based on defect density using Murphy and Poisson models
-- **Parameter Validation**: Pre-validate parameters with helpful warnings and suggestions
+- **Die Per Wafer Calculation**: Calculate how many dies fit on a wafer using the industry-standard rectangular placement algorithm
+- **Parameter Validation**: Pre-validate parameters with helpful warnings and suggestions  
 - **Standard Wafer Information**: Access standard wafer sizes and their typical applications
-- **Algorithm Comparison**: Compare different placement algorithms to maximize utilization
 
-## Installation
+## Quick Start
+
+### 1. Install from GitHub
 
 ```bash
-cd anysilicon
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/mcp4eda.git
+cd mcp4eda/anysilicon
+
+# Install dependencies and build
 npm install
 npm run build
 ```
 
-## Usage
+### 2. Configure Claude Desktop
 
-### As an MCP Server
+Find your Claude Desktop configuration file:
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
-Add to your Claude Desktop configuration:
+Add the AnySilicon server:
 
 ```json
 {
   "mcpServers": {
     "anysilicon": {
       "command": "node",
-      "args": ["/path/to/anysilicon/dist/index.js"]
+      "args": ["/absolute/path/to/anysilicon/dist/index.js"]
     }
   }
 }
 ```
 
-### Available Resources
+**Note**: Replace `/absolute/path/to/anysilicon` with the actual path where you cloned the repository.
 
-#### 1. wafer://standards/sizes
-Standard wafer sizes with typical applications and defect density ranges.
+### 3. Restart Claude Desktop
 
-#### 2. wafer://standards/defect-density  
-Typical defect density ranges for different semiconductor process nodes.
+Restart Claude Desktop to load the new MCP server.
 
-#### 3. wafer://formulas/die-per-wafer
-Mathematical formulas and algorithms used for die per wafer calculations.
+## Usage Examples
 
-### Available Prompts
+### Basic Calculation
+Ask Claude: "Calculate how many 10x10mm dies fit on a 300mm wafer"
 
-#### 1. quick-calculation
-Quick die per wafer calculation for common scenarios.
-- Parameters: `wafer_size`, `die_size` (e.g., "10x10")
+### Parameter Validation  
+Ask Claude: "Is it possible to fit 50x50mm dies on a 200mm wafer?"
 
-#### 2. yield-analysis
-Analyze yield for a specific die and process node.
-- Parameters: `process_node` (e.g., "7nm"), `die_area`
+### Standard Wafer Info
+Ask Claude: "Show me standard wafer sizes and their applications"
 
-#### 3. optimization-study
-Find optimal die size for maximizing wafer utilization.
-- Parameters: `wafer_size`, `target_dies` (optional)
+### Optimization Study
+Ask Claude: "Find the best die size to get around 500 dies on a 300mm wafer"
 
-### Available Tools
+## Available Tools
 
-#### 1. calculate_die_per_wafer
+### 1. calculate_die_per_wafer
 Calculate the number of dies that fit on a wafer.
 
 ```typescript
@@ -72,28 +74,25 @@ Calculate the number of dies that fit on a wafer.
   "die_width": 10,          // mm
   "die_height": 10,         // mm
   "scribe_lane": 0.1,       // mm (optional, default: 0.1)
-  "edge_exclusion": 3,      // mm (optional, default: 3)
-  "algorithm": "hexagonal", // "rectangular" or "hexagonal"
-  "include_visualization": false
+  "edge_exclusion": 3       // mm (optional, default: 3)
 }
 
 // Response
 {
-  "total_dies": 706,
+  "total_dies": 653,
   "wafer_area": 70685.83,
-  "utilized_area": 70600,
-  "utilization_percentage": 99.88,
-  "algorithm_used": "hexagonal",
+  "utilized_area": 65300,
+  "utilization_percentage": 92.38,
   "calculation_details": {
     "effective_diameter": 294,
     "die_area": 100,
-    "dies_per_row": [27, 28, 29, ...],
-    "placement_efficiency": 103.2
+    "dies_per_row": [28, 28, 28, ...],
+    "placement_efficiency": 95.56
   }
 }
 ```
 
-#### 2. validate_parameters
+### 2. validate_parameters
 Validate calculation parameters before processing.
 
 ```typescript
@@ -112,11 +111,11 @@ Validate calculation parameters before processing.
   "valid": true,
   "errors": [],
   "warnings": [],
-  "suggestions": ["Try hexagonal placement algorithm for potentially better utilization"]
+  "suggestions": ["Consider rotating the die 90° to see if it improves utilization"]
 }
 ```
 
-#### 3. get_standard_wafer_sizes
+### 3. get_standard_wafer_sizes
 Get information about standard wafer sizes.
 
 ```typescript
@@ -139,45 +138,43 @@ Get information about standard wafer sizes.
 }
 ```
 
-#### 4. calculate_yield
-Calculate die yield considering defect density.
+## Available Resources
 
-```typescript
-// Example request
-{
-  "total_dies": 706,
-  "defect_density": 0.05,  // defects per cm²
-  "die_area": 100,         // mm²
-  "alpha": 3               // clustering factor (optional)
-}
+### wafer://standards/sizes
+Standard wafer dimensions and applications.
 
-// Response
-{
-  "yield_percentage": 95.12,
-  "good_dies": 671,
-  "defective_dies": 35,
-  "model_used": "Murphy"
-}
+### wafer://standards/defect-density  
+Typical defect densities by process node.
+
+### wafer://formulas/die-per-wafer
+Mathematical formula for die per wafer calculations.
+
+## Available Prompts
+
+### quick-calculation
+```
+/anysilicon:quick-calculation wafer_size=300 die_size=10x10
 ```
 
-#### 5. compare_algorithms
-Compare rectangular vs hexagonal placement algorithms.
-
-```typescript
-// Example request
-{
-  "wafer_diameter": 300,
-  "die_width": 10,
-  "die_height": 10
-}
-
-// Response
-{
-  "rectangular": { /* full calculation result */ },
-  "hexagonal": { /* full calculation result */ },
-  "recommendation": "Hexagonal placement recommended: 12.3% more dies"
-}
+### optimization-study
 ```
+/anysilicon:optimization-study wafer_size=300 target_dies=500
+```
+
+## Algorithm
+
+The server uses the AnySilicon die per wafer formula:
+
+```
+Die Per Wafer = d × π × (d/(4×S) - 1/√(2×S))
+```
+
+Where:
+- **d** = effective wafer diameter (mm) after edge exclusion
+- **S** = die area (mm²) including scribe lanes
+- **π** = Pi (3.14159...)
+
+This formula provides a quick and accurate estimate of dies per wafer, matching the calculation method used by AnySilicon's online calculator.
 
 ## Development
 
@@ -208,35 +205,36 @@ npm run format            # Format code with Prettier
 npm run validate          # Run lint and tests
 ```
 
-## Algorithms
+## Troubleshooting
 
-### Rectangular Placement
-- Places dies in a grid pattern
-- Simple and predictable
-- Good for rectangular dies
+### MCP Server Not Found
+If Claude says "I don't have access to AnySilicon tools":
+1. Check the configuration file path is correct
+2. Ensure the compiled JavaScript exists at `anysilicon/dist/index.js`
+3. Restart Claude Desktop again
+4. Check Claude Desktop logs for errors
 
-### Hexagonal Placement
-- Offset row placement for better packing
-- Up to 15% better utilization
-- Ideal for square or near-square dies
-
-### Yield Models
-
-#### Murphy Model
+### Build Issues
+If the server won't start:
+```bash
+cd anysilicon
+npm install
+npm run build
 ```
-Yield = [(1 - e^(-DA/α))/(DA/α)]^α
-```
-- Accounts for defect clustering
-- More accurate for real-world scenarios
-- Uses clustering factor (α)
 
-#### Poisson Model
+### Permission Issues
+Ensure the dist/index.js file is executable:
+```bash
+chmod +x anysilicon/dist/index.js
 ```
-Yield = e^(-DA)
+
+### Test the Server Manually
+```bash
+cd anysilicon
+npm start
 ```
-- Simpler calculation
-- Assumes random defect distribution
-- Good for low defect densities
+
+This should output "AnySilicon MCP Server started" if everything is working.
 
 ## Contributing
 

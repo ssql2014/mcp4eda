@@ -1,5 +1,3 @@
-import { calculateRectangularPlacement } from './algorithms/rectangular.js';
-import { calculateHexagonalPlacement } from './algorithms/hexagonal.js';
 import { validateDiePerWaferParams, normalizeParams } from '../utils/validation.js';
 import { ValidationError } from '../errors/index.js';
 import type { DiePerWaferParams, DiePerWaferResult } from './types.js';
@@ -14,37 +12,51 @@ export function calculateDiePerWafer(params: DiePerWaferParams): DiePerWaferResu
 
     // Normalize parameters with defaults
     const normalizedParams = normalizeParams(params);
+    const { wafer_diameter, die_width, die_height, scribe_lane, edge_exclusion } = normalizedParams;
 
     // Add safety check for die dimensions
-    if (normalizedParams.die_width >= normalizedParams.wafer_diameter ||
-        normalizedParams.die_height >= normalizedParams.wafer_diameter) {
+    if (die_width >= wafer_diameter || die_height >= wafer_diameter) {
       throw new ValidationError('Die dimensions exceed wafer diameter');
     }
 
-    // Calculate based on selected algorithm
-    let result: Omit<DiePerWaferResult, 'visualization_url'>;
+    // Apply AnySilicon formula: DPW = d × π × (d/(4×S) - 1/√(2×S))
+    // where d = wafer diameter, S = die area (die size in square mm)
     
-    switch (normalizedParams.algorithm) {
-      case 'rectangular':
-        result = calculateRectangularPlacement(normalizedParams);
-        break;
-      case 'hexagonal':
-        result = calculateHexagonalPlacement(normalizedParams);
-        break;
-      default:
-        throw new ValidationError(`Unknown algorithm: ${normalizedParams.algorithm}`);
-    }
+    // Calculate die area including scribe lanes
+    const dieWidthWithScribe = die_width + scribe_lane;
+    const dieHeightWithScribe = die_height + scribe_lane;
+    const S = dieWidthWithScribe * dieHeightWithScribe; // die area in mm²
+    
+    // Apply edge exclusion to wafer diameter
+    const d = wafer_diameter - 2 * edge_exclusion; // effective diameter
+    
+    // Calculate using AnySilicon formula
+    const totalDies = Math.floor(
+      d * Math.PI * (d / (4 * S) - 1 / Math.sqrt(2 * S))
+    );
 
-    // Add visualization URL if requested
-    if (normalizedParams.include_visualization) {
-      // TODO: Implement visualization generation
-      return {
-        ...result,
-        visualization_url: 'visualization-not-implemented',
-      };
-    }
+    // Calculate areas
+    const waferArea = Math.PI * Math.pow(wafer_diameter / 2, 2);
+    const dieArea = die_width * die_height; // actual die area without scribe
+    const utilizedArea = totalDies * dieArea;
+    const utilizationPercentage = (utilizedArea / waferArea) * 100;
+    
+    // Calculate effective wafer area after edge exclusion
+    const effectiveWaferArea = Math.PI * Math.pow(d / 2, 2);
+    const placementEfficiency = (utilizedArea / effectiveWaferArea) * 100;
 
-    return result;
+    return {
+      total_dies: totalDies,
+      wafer_area: waferArea,
+      utilized_area: utilizedArea,
+      utilization_percentage: parseFloat(utilizationPercentage.toFixed(2)),
+      calculation_details: {
+        effective_diameter: d,
+        die_area: dieArea,
+        dies_per_row: [], // Not applicable for this formula
+        placement_efficiency: parseFloat(placementEfficiency.toFixed(2)),
+      },
+    };
   } catch (error) {
     if (error instanceof ValidationError) {
       throw error;
@@ -55,29 +67,3 @@ export function calculateDiePerWafer(params: DiePerWaferParams): DiePerWaferResu
   }
 }
 
-export function compareAlgorithms(params: DiePerWaferParams): {
-  rectangular: DiePerWaferResult;
-  hexagonal: DiePerWaferResult;
-  recommendation: string;
-} {
-  const rectangularResult = calculateDiePerWafer({ ...params, algorithm: 'rectangular' });
-  const hexagonalResult = calculateDiePerWafer({ ...params, algorithm: 'hexagonal' });
-
-  const improvement = 
-    ((hexagonalResult.total_dies - rectangularResult.total_dies) / rectangularResult.total_dies) * 100;
-
-  let recommendation: string;
-  if (improvement > 5) {
-    recommendation = `Hexagonal placement recommended: ${improvement.toFixed(1)}% more dies`;
-  } else if (improvement < -5) {
-    recommendation = `Rectangular placement recommended: ${Math.abs(improvement).toFixed(1)}% more dies`;
-  } else {
-    recommendation = 'Both algorithms yield similar results';
-  }
-
-  return {
-    rectangular: rectangularResult,
-    hexagonal: hexagonalResult,
-    recommendation,
-  };
-}

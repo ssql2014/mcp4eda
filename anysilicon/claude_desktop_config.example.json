@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "anysilicon": {
+      "command": "node",
+      "args": ["/absolute/path/to/anysilicon/dist/index.js"]
+    }
+  }
+}

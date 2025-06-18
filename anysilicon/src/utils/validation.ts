@@ -27,7 +27,7 @@ export function validateDiePerWaferParams(params: DiePerWaferParams): Validation
   // Validate wafer diameter
   if (!isValidWaferDiameter(params.wafer_diameter)) {
     errors.push(
-      `Invalid wafer diameter: ${params.wafer_diameter}. Must be one of: 150, 200, 300, 450 mm`
+      `Invalid wafer diameter: ${String(params.wafer_diameter)}. Must be one of: 150, 200, 300, 450 mm`
     );
   }
 
@@ -41,7 +41,7 @@ export function validateDiePerWaferParams(params: DiePerWaferParams): Validation
 
   // Validate scribe lane
   const scribeLane = params.scribe_lane ?? DEFAULT_SCRIBE_LANE;
-  if (scribeLane < SCRIBE_LANE_RANGE.min || scribeLane > SCRIBE_LANE_RANGE.max) {
+  if (params.scribe_lane !== undefined && (scribeLane < SCRIBE_LANE_RANGE.min || scribeLane > SCRIBE_LANE_RANGE.max)) {
     errors.push(
       `Scribe lane must be between ${SCRIBE_LANE_RANGE.min} and ${SCRIBE_LANE_RANGE.max} mm`
     );
@@ -49,7 +49,7 @@ export function validateDiePerWaferParams(params: DiePerWaferParams): Validation
 
   // Validate edge exclusion
   const edgeExclusion = params.edge_exclusion ?? DEFAULT_EDGE_EXCLUSION;
-  if (edgeExclusion < EDGE_EXCLUSION_RANGE.min || edgeExclusion > EDGE_EXCLUSION_RANGE.max) {
+  if (params.edge_exclusion !== undefined && (edgeExclusion < EDGE_EXCLUSION_RANGE.min || edgeExclusion > EDGE_EXCLUSION_RANGE.max)) {
     errors.push(
       `Edge exclusion must be between ${EDGE_EXCLUSION_RANGE.min} and ${EDGE_EXCLUSION_RANGE.max} mm`
     );
@@ -84,10 +84,6 @@ export function validateDiePerWaferParams(params: DiePerWaferParams): Validation
     suggestions.push('Consider rotating the die 90° to see if it improves utilization');
   }
 
-  if (!params.algorithm || params.algorithm === 'rectangular') {
-    suggestions.push('Try hexagonal placement algorithm for potentially better utilization');
-  }
-
   const dieArea = params.die_width * params.die_height;
   if (dieArea < 25) {
     suggestions.push('Small dies may benefit from larger scribe lanes for easier handling');
@@ -108,46 +104,9 @@ export function normalizeParams(params: DiePerWaferParams): Required<DiePerWafer
     die_height: params.die_height,
     scribe_lane: params.scribe_lane ?? DEFAULT_SCRIBE_LANE,
     edge_exclusion: params.edge_exclusion ?? DEFAULT_EDGE_EXCLUSION,
-    algorithm: params.algorithm ?? 'rectangular',
-    include_visualization: params.include_visualization ?? false,
   };
 }
 
-export function validateYieldParams(params: {
-  total_dies: number;
-  defect_density: number;
-  die_area: number;
-  alpha?: number;
-}): void {
-  if (params.total_dies <= 0) {
-    throw new ValidationError('Total dies must be positive');
-  }
-  if (params.defect_density < 0) {
-    throw new ValidationError('Defect density cannot be negative');
-  }
-  if (params.die_area <= 0) {
-    throw new ValidationError('Die area must be positive');
-  }
-  if (params.alpha !== undefined && params.alpha <= 0) {
-    throw new ValidationError('Alpha (clustering factor) must be positive');
-  }
-}
-
-export function validateCostParams(params: {
-  wafer_cost: number;
-  total_dies: number;
-  yield_percentage: number;
-}): void {
-  if (params.wafer_cost < 0) {
-    throw new ValidationError('Wafer cost cannot be negative');
-  }
-  if (params.total_dies <= 0) {
-    throw new ValidationError('Total dies must be positive');
-  }
-  if (params.yield_percentage < 0 || params.yield_percentage > 100) {
-    throw new ValidationError('Yield percentage must be between 0 and 100');
-  }
-}
 
 export function isDiePerWaferParams(obj: unknown): obj is DiePerWaferParams {
   return (
@@ -156,9 +115,9 @@ export function isDiePerWaferParams(obj: unknown): obj is DiePerWaferParams {
     'wafer_diameter' in obj &&
     'die_width' in obj &&
     'die_height' in obj &&
-    typeof (obj as any).wafer_diameter === 'number' &&
-    typeof (obj as any).die_width === 'number' &&
-    typeof (obj as any).die_height === 'number'
+    typeof (obj as DiePerWaferParams).wafer_diameter === 'number' &&
+    typeof (obj as DiePerWaferParams).die_width === 'number' &&
+    typeof (obj as DiePerWaferParams).die_height === 'number'
   );
 }
 

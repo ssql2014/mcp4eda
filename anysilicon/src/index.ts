@@ -11,14 +11,12 @@ import {
   ErrorCode,
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
-import { calculateDiePerWafer, compareAlgorithms } from './calculations/diePerWafer.js';
-import { calculateYield } from './calculations/yieldCalculator.js';
+import { calculateDiePerWafer } from './calculations/diePerWafer.js';
 import { STANDARD_WAFER_SIZES } from './config/defaults.js';
 import { validateDiePerWaferParams, isDiePerWaferParams } from './utils/validation.js';
 import { AnySiliconError } from './errors/index.js';
 import type {
   DiePerWaferParams,
-  YieldParams,
   StandardWaferInfo,
 } from './calculations/types.js';
 
@@ -82,31 +80,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case 'calculate_yield': {
-        const params = args as unknown as YieldParams;
-        const result = calculateYield(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
-      }
 
-      case 'compare_algorithms': {
-        const params = args as unknown as DiePerWaferParams;
-        const result = compareAlgorithms(params);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            },
-          ],
-        };
-      }
 
       default:
         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
@@ -156,15 +130,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               minimum: 2,
               maximum: 5,
             },
-            algorithm: {
-              type: 'string',
-              enum: ['rectangular', 'hexagonal'],
-              description: 'Placement algorithm (default: rectangular)',
-            },
-            include_visualization: {
-              type: 'boolean',
-              description: 'Generate placement visualization',
-            },
           },
           required: ['wafer_diameter', 'die_width', 'die_height'],
         },
@@ -193,60 +158,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object',
           properties: {},
-        },
-      },
-      {
-        name: 'calculate_yield',
-        description: 'Calculate die yield considering defect density',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            total_dies: {
-              type: 'number',
-              description: 'Total number of dies on wafer',
-            },
-            defect_density: {
-              type: 'number',
-              description: 'Defects per cm²',
-              minimum: 0,
-            },
-            die_area: {
-              type: 'number',
-              description: 'Die area in mm²',
-              minimum: 0,
-            },
-            alpha: {
-              type: 'number',
-              description: 'Clustering factor (default: 3)',
-              minimum: 0,
-            },
-          },
-          required: ['total_dies', 'defect_density', 'die_area'],
-        },
-      },
-      {
-        name: 'compare_algorithms',
-        description: 'Compare rectangular vs hexagonal placement algorithms',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            wafer_diameter: {
-              type: 'number',
-              enum: [150, 200, 300, 450],
-              description: 'Wafer diameter in mm',
-            },
-            die_width: {
-              type: 'number',
-              description: 'Die width in mm',
-              minimum: 0.1,
-            },
-            die_height: {
-              type: 'number',
-              description: 'Die height in mm',
-              minimum: 0.1,
-            },
-          },
-          required: ['wafer_diameter', 'die_width', 'die_height'],
         },
       },
     ],
@@ -322,42 +233,28 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
         contents: [{
           uri,
           mimeType: 'text/markdown',
-          text: `# Die Per Wafer Calculation Formulas
+          text: `# Die Per Wafer Calculation Formula
 
-## Basic Formula
+## AnySilicon Formula
 \`\`\`
-Dies per Wafer = Wafer Area / Die Area × Utilization Factor
+Die Per Wafer = d × π × (d/(4×S) - 1/√(2×S))
 \`\`\`
 
-## Detailed Rectangular Algorithm
-1. Calculate effective diameter: \`D_eff = D_wafer - 2 × edge_exclusion\`
-2. For each row y from -R_eff to +R_eff:
-   - Calculate x range: \`x_max = sqrt(R_eff² - y²)\`
-   - Dies in row: \`floor(2 × x_max / (die_width + scribe))\`
-3. Sum all dies across rows
-
-## Hexagonal Packing Algorithm
-1. Uses offset rows for better packing
-2. Vertical spacing: \`die_height × sqrt(3)/2\`
-3. Odd rows offset by: \`die_width / 2\`
-4. Typically yields 10-15% more dies than rectangular
-
-## Yield Calculations
-
-### Murphy Model
-\`\`\`
-Yield = [(1 - e^(-DA/α))/(DA/α)]^α
-\`\`\`
 Where:
-- D = defect density (defects/cm²)
-- A = die area (cm²)
-- α = clustering factor (typically 3)
+- **d** = wafer diameter (mm) - after edge exclusion
+- **S** = die area (mm²) - including scribe lanes
+- **π** = Pi (approximately 3.14159)
 
-### Poisson Model
-\`\`\`
-Yield = e^(-DA)
-\`\`\`
-Simpler model assuming random defect distribution.`,
+## Calculation Method
+1. Calculate die area including scribe lanes: \`S = (die_width + scribe) × (die_height + scribe)\`
+2. Apply edge exclusion to get effective diameter: \`d = wafer_diameter - 2 × edge_exclusion\`
+3. Apply the AnySilicon formula to get total dies
+
+## Key Parameters
+- **Wafer Diameter**: Standard sizes are 150mm, 200mm, 300mm, and 450mm
+- **Die Size**: Width and height of individual die in mm
+- **Scribe Lane**: Separation between dies for cutting (typically 0.1mm)
+- **Edge Exclusion**: Unusable area at wafer edge (typically 3mm)`,
         }],
       };
       
@@ -382,22 +279,6 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => {
           {
             name: 'die_size',
             description: 'Die dimensions in format "widthxheight" (e.g., "10x10")',
-            required: true,
-          },
-        ],
-      },
-      {
-        name: 'yield-analysis',
-        description: 'Analyze yield for a specific die and process',
-        arguments: [
-          {
-            name: 'process_node',
-            description: 'Process node (e.g., "7nm", "14nm")',
-            required: true,
-          },
-          {
-            name: 'die_area',
-            description: 'Die area in mm²',
             required: true,
           },
         ],
@@ -439,29 +320,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             role: 'user',
             content: {
               type: 'text',
-              text: `Calculate how many ${width}x${height}mm dies fit on a ${waferSize}mm wafer using both rectangular and hexagonal algorithms. Include utilization percentage and recommend the best approach.`,
-            },
-          },
-        ],
-      };
-    }
-    
-    case 'yield-analysis': {
-      const processNode = args?.process_node || '7nm';
-      const dieArea = args?.die_area || '100';
-      
-      return {
-        description: `Analyze yield for ${processNode} process with ${dieArea}mm² die`,
-        messages: [
-          {
-            role: 'user',
-            content: {
-              type: 'text',
-              text: `For a ${processNode} process with ${dieArea}mm² die area:
-1. Get typical defect density from resources
-2. Calculate yield using both Murphy and Poisson models
-3. Calculate good dies for a 300mm wafer
-4. Provide recommendations for yield improvement`,
+              text: `Calculate how many ${width}x${height}mm dies fit on a ${waferSize}mm wafer. Include utilization percentage and calculation details.`,
             },
           },
         ],
@@ -480,8 +339,8 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             content: {
               type: 'text',
               text: targetDies 
-                ? `Find die dimensions that yield approximately ${targetDies} dies on a ${waferSize}mm wafer. Test multiple aspect ratios and both algorithms.`
-                : `Find optimal die sizes for a ${waferSize}mm wafer that maximize utilization. Test sizes from 5x5mm to 20x20mm and compare algorithms.`,
+                ? `Find die dimensions that yield approximately ${targetDies} dies on a ${waferSize}mm wafer. Test multiple aspect ratios.`
+                : `Find optimal die sizes for a ${waferSize}mm wafer that maximize utilization. Test sizes from 5x5mm to 20x20mm.`,
             },
           },
         ],
