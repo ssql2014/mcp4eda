@@ -47,7 +47,9 @@ npm install
 npm run build
 ```
 
-### 2. Configure Claude Desktop
+### 2. Configure Your Claude Application
+
+#### For Claude Desktop
 
 Find your Claude Desktop configuration file:
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -67,25 +69,56 @@ Add the AnySilicon server:
 }
 ```
 
+#### For Claude Code (Cursor)
+
+Find your Cursor MCP configuration file:
+- **macOS/Linux**: `~/.cursor/mcp.json`
+- **Windows**: `%USERPROFILE%\.cursor\mcp.json`
+
+If the file doesn't exist, create it. Add the AnySilicon server:
+
+```json
+{
+  "mcpServers": {
+    "anysilicon": {
+      "command": "node",
+      "args": ["/absolute/path/to/anysilicon/dist/index.js"]
+    }
+  }
+}
+```
+
 **Note**: Replace `/absolute/path/to/anysilicon` with the actual path where you cloned the repository.
 
-### 3. Restart Claude Desktop
+### 3. Restart Your Application
 
-Restart Claude Desktop to load the new MCP server.
+Restart Claude Desktop or Claude Code (Cursor) to load the new MCP server.
 
 ## Usage Examples
 
+Once configured and restarted, you can use natural language to interact with the calculator:
+
 ### Basic Calculation
-Ask Claude: "Calculate how many 10x10mm dies fit on a 300mm wafer"
+- "Calculate how many 10x10mm dies fit on a 300mm wafer"
+- "How many 5x5mm dies can I get from a 200mm wafer?"
+- "What's the die count for 15x15mm dies on a 12 inch wafer with 0.15mm scribe lanes?"
 
 ### Parameter Validation  
-Ask Claude: "Is it possible to fit 50x50mm dies on a 200mm wafer?"
+- "Is it possible to fit 50x50mm dies on a 200mm wafer?"
+- "Validate these parameters: 300mm wafer, 7x7mm die, 0.05mm scribe"
 
 ### Standard Wafer Info
-Ask Claude: "Show me standard wafer sizes and their applications"
+- "Show me standard wafer sizes and their applications"
+- "What are the typical wafer sizes used in semiconductor manufacturing?"
 
-### Optimization Study
-Ask Claude: "Find the best die size to get around 500 dies on a 300mm wafer"
+### Real-world Scenarios
+- "Calculate dies per wafer for a 300mm wafer with 10x12mm dies, 0.1mm scribe lanes, and 3mm edge exclusion"
+- "I need to manufacture chips that are 8mm x 6mm. How many can I get from a standard 12-inch wafer?"
+
+### Note on Wafer Sizes
+The AnySilicon calculator supports:
+- **200mm wafers** (8 inch) - automatically selected when you specify 200mm
+- **300mm wafers** (12 inch) - automatically selected when you specify 300mm
 
 ## Available Tools
 

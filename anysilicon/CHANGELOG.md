@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2024-12-19
+
+### Added
+- Documentation for Claude Code (Cursor) configuration
+- Instructions for configuring MCP servers in both Claude Desktop and Claude Code
+- More usage examples with natural language queries
+
+### Updated
+- README with comprehensive setup instructions for different Claude applications
+
 ## [1.1.0] - 2024-12-19
 
 ### Changed
