@@ -1,6 +1,6 @@
 {
   "name": "anysilicon-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MCP server for semiconductor die calculations",
   "main": "dist/index.js",
   "type": "module",
@@ -14,7 +14,9 @@
     "format": "prettier --write src/**/*.ts",
     "validate": "npm run lint && npm run test",
     "benchmark": "tsx scripts/benchmark.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test:scraper": "node test-enhanced.js",
+    "investigate": "node investigate.js"
   },
   "keywords": [
     "mcp",
@@ -26,11 +28,13 @@
   "author": "AnySilicon",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.6.0"
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "puppeteer": "^24.10.2"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.24",
+    "@types/puppeteer": "^5.4.7",
     "@typescript-eslint/eslint-plugin": "^7.1.0",
     "@typescript-eslint/parser": "^7.1.0",
     "eslint": "^8.57.0",

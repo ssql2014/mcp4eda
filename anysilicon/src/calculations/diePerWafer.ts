@@ -1,8 +1,19 @@
 import { validateDiePerWaferParams, normalizeParams } from '../utils/validation.js';
 import { ValidationError } from '../errors/index.js';
+import { AnySiliconScraper } from '../scrapers/anysilicon-fixed.js';
 import type { DiePerWaferParams, DiePerWaferResult } from './types.js';
 
-export function calculateDiePerWafer(params: DiePerWaferParams): DiePerWaferResult {
+let scraper: AnySiliconScraper | null = null;
+
+async function ensureScraperInitialized(): Promise<AnySiliconScraper> {
+  if (!scraper) {
+    scraper = new AnySiliconScraper();
+    await scraper.initialize();
+  }
+  return scraper;
+}
+
+export async function calculateDiePerWafer(params: DiePerWaferParams): Promise<DiePerWaferResult> {
   try {
     // Validate parameters
     const validation = validateDiePerWaferParams(params);
@@ -19,51 +30,61 @@ export function calculateDiePerWafer(params: DiePerWaferParams): DiePerWaferResu
       throw new ValidationError('Die dimensions exceed wafer diameter');
     }
 
-    // Apply AnySilicon formula: DPW = d × π × (d/(4×S) - 1/√(2×S))
-    // where d = wafer diameter, S = die area (die size in square mm)
-    
-    // Calculate die area including scribe lanes
-    const dieWidthWithScribe = die_width + scribe_lane;
-    const dieHeightWithScribe = die_height + scribe_lane;
-    const S = dieWidthWithScribe * dieHeightWithScribe; // die area in mm²
-    
-    // Apply edge exclusion to wafer diameter
-    const d = wafer_diameter - 2 * edge_exclusion; // effective diameter
-    
-    // Calculate using AnySilicon formula
-    const totalDies = Math.floor(
-      d * Math.PI * (d / (4 * S) - 1 / Math.sqrt(2 * S))
-    );
+    // Initialize scraper if needed
+    const activeScraper = await ensureScraperInitialized();
 
-    // Calculate areas
+    // Prepare parameters for AnySilicon calculator
+    const scraperParams = {
+      waferDiameter: wafer_diameter,
+      dieWidth: die_width,
+      dieHeight: die_height,
+      edgeExclusion: edge_exclusion,
+      scribeWidth: scribe_lane
+    };
+
+    // Get results from AnySilicon calculator webpage
+    const scraperResult = await activeScraper.calculateDiePerWafer(scraperParams);
+
+    // Convert scraper results to our format
     const waferArea = Math.PI * Math.pow(wafer_diameter / 2, 2);
-    const dieArea = die_width * die_height; // actual die area without scribe
-    const utilizedArea = totalDies * dieArea;
+    const dieArea = die_width * die_height;
+    const utilizedArea = scraperResult.netDieCount * dieArea;
     const utilizationPercentage = (utilizedArea / waferArea) * 100;
     
     // Calculate effective wafer area after edge exclusion
-    const effectiveWaferArea = Math.PI * Math.pow(d / 2, 2);
+    const effectiveDiameter = wafer_diameter - 2 * edge_exclusion;
+    const effectiveWaferArea = Math.PI * Math.pow(effectiveDiameter / 2, 2);
     const placementEfficiency = (utilizedArea / effectiveWaferArea) * 100;
 
     return {
-      total_dies: totalDies,
+      total_dies: scraperResult.netDieCount,
       wafer_area: waferArea,
       utilized_area: utilizedArea,
       utilization_percentage: parseFloat(utilizationPercentage.toFixed(2)),
       calculation_details: {
-        effective_diameter: d,
+        effective_diameter: effectiveDiameter,
         die_area: dieArea,
-        dies_per_row: [], // Not applicable for this formula
+        dies_per_row: [], // Not provided by AnySilicon calculator
         placement_efficiency: parseFloat(placementEfficiency.toFixed(2)),
+        gross_die_count: scraperResult.grossDieCount,
+        edge_die_loss: scraperResult.edgeDieLoss
       },
     };
   } catch (error) {
     if (error instanceof ValidationError) {
       throw error;
     }
-    throw new ValidationError('Unexpected calculation error', { 
-      originalError: error instanceof Error ? error.message : String(error) 
+    throw new ValidationError('Calculation error', { 
+      originalError: error instanceof Error ? error.message : String(error),
+      hint: 'Failed to get results from AnySilicon calculator. Please check your internet connection and try again.'
     });
   }
 }
 
+// Cleanup function to close browser when done
+export async function cleanup(): Promise<void> {
+  if (scraper) {
+    await scraper.cleanup();
+    scraper = null;
+  }
+}

@@ -18,6 +18,8 @@ export interface DiePerWaferResult {
     die_area: number;
     dies_per_row: number[];
     placement_efficiency: number;
+    gross_die_count?: number;
+    edge_die_loss?: number;
   };
 }
 

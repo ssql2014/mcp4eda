@@ -1,12 +1,37 @@
 # AnySilicon MCP Server
 
-An MCP (Model Context Protocol) server for semiconductor die per wafer calculations, based on the AnySilicon die per wafer formula.
+An MCP (Model Context Protocol) server for semiconductor die per wafer calculations. This server wraps the AnySilicon die-per-wafer calculator webpage (https://anysilicon.com/die-per-wafer-formula-free-calculators/) to provide calculations through an MCP interface.
 
 ## Features
 
-- **Die Per Wafer Calculation**: Calculate how many dies fit on a wafer using the industry-standard rectangular placement algorithm
+- **Die Per Wafer Calculation**: Calculate how many dies fit on a wafer using the AnySilicon online calculator
+- **Web Scraping Integration**: Uses Puppeteer to interact with the AnySilicon webpage automatically
 - **Parameter Validation**: Pre-validate parameters with helpful warnings and suggestions  
 - **Standard Wafer Information**: Access standard wafer sizes and their typical applications
+
+## Implementation Note
+
+This MCP server uses web scraping to interact with the AnySilicon calculator webpage instead of implementing the formula locally. This ensures:
+- Always uses the latest calculation logic from AnySilicon
+- No need to reverse-engineer or maintain calculation formulas
+- Leverages a trusted, industry-standard calculator
+
+### How It Works
+
+The server automates the AnySilicon web calculator by:
+1. Navigating to https://anysilicon.com/die-per-wafer-formula-free-calculators/
+2. Selecting the appropriate wafer size (8" for 200mm, 12" for 300mm)
+3. Filling in die dimensions and other parameters
+4. Clicking the calculate button
+5. Extracting the results
+
+### Supported Parameters
+
+- **Wafer Diameter**: 200mm (8") or 300mm (12") - automatically mapped to dropdown
+- **Die Width/Height**: In millimeters
+- **Scribe Width**: In millimeters (converted to micrometers for the form)
+- **Edge Exclusion**: In millimeters
+- **Results**: Returns total dies per wafer with utilization calculations
 
 ## Quick Start
 

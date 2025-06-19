@@ -11,7 +11,7 @@ import {
   ErrorCode,
   McpError,
 } from '@modelcontextprotocol/sdk/types.js';
-import { calculateDiePerWafer } from './calculations/diePerWafer.js';
+import { calculateDiePerWafer, cleanup } from './calculations/diePerWafer.js';
 import { STANDARD_WAFER_SIZES } from './config/defaults.js';
 import { validateDiePerWaferParams, isDiePerWaferParams } from './utils/validation.js';
 import { AnySiliconError } from './errors/index.js';
@@ -44,7 +44,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!isDiePerWaferParams(args)) {
           throw new McpError(ErrorCode.InvalidParams, 'Invalid parameters for calculate_die_per_wafer');
         }
-        const result = calculateDiePerWafer(args);
+        const result = await calculateDiePerWafer(args);
         return {
           content: [
             {
@@ -358,6 +358,19 @@ async function main() {
   await server.connect(transport);
   console.error('AnySilicon MCP Server started');
 }
+
+// Cleanup on exit
+process.on('SIGINT', async () => {
+  console.error('Shutting down...');
+  await cleanup();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.error('Shutting down...');
+  await cleanup();
+  process.exit(0);
+});
 
 main().catch((error) => {
   console.error('Fatal error:', error);
