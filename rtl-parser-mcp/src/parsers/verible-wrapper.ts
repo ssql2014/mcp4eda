@@ -10,18 +10,66 @@ const execAsync = promisify(exec);
 export class VeribleWrapper {
   private verilatorPath: string = 'verible-verilog-syntax';
   private veribleLintPath: string = 'verible-verilog-lint';
+  private veribleAvailable: boolean = false;
   
   constructor() {
-    this.checkVeribleInstallation();
+    // Make the check non-blocking - initialize asynchronously
+    this.checkVeribleInstallation().catch(err => {
+      console.error('[RTL Parser MCP] Warning: Verible check failed:', err.message);
+    });
   }
 
   private async checkVeribleInstallation(): Promise<void> {
     try {
-      await execAsync('verible-verilog-syntax --version');
-      console.error('[RTL Parser MCP] Verible installation verified');
+      // First try to find verible in common locations
+      const possiblePaths = [
+        '/Users/qlss/.local/bin/verible-verilog-syntax',
+        '/usr/local/bin/verible-verilog-syntax',
+        '/opt/homebrew/bin/verible-verilog-syntax',
+        'verible-verilog-syntax'
+      ];
+      
+      let foundPath: string | null = null;
+      for (const path of possiblePaths) {
+        try {
+          const { stdout } = await execAsync(`${path} --version`);
+          foundPath = path;
+          this.verilatorPath = path;
+          this.veribleLintPath = path.replace('verilog-syntax', 'verilog-lint');
+          console.error(`[RTL Parser MCP] Verible found at: ${path}`);
+          console.error(`[RTL Parser MCP] Verible version: ${stdout.trim()}`);
+          break;
+        } catch (e) {
+          // Try next path
+        }
+      }
+      
+      if (!foundPath) {
+        // Try using which command as fallback
+        try {
+          const { stdout: whichPath } = await execAsync('which verible-verilog-syntax');
+          if (whichPath.trim()) {
+            this.verilatorPath = whichPath.trim();
+            this.veribleLintPath = this.verilatorPath.replace('verilog-syntax', 'verilog-lint');
+            foundPath = this.verilatorPath;
+            console.error(`[RTL Parser MCP] Verible found via which: ${foundPath}`);
+          }
+        } catch (e) {
+          // which command failed
+        }
+      }
+      
+      if (foundPath) {
+        this.veribleAvailable = true;
+        console.error('[RTL Parser MCP] Verible installation verified');
+      } else {
+        this.veribleAvailable = false;
+        console.error('[RTL Parser MCP] Warning: Verible not found. Some features may be limited.');
+        console.error('[RTL Parser MCP] Please install Verible for full functionality.');
+      }
     } catch (error) {
-      console.error('[RTL Parser MCP] Verible not found. Please install Verible first.');
-      throw new Error('Verible not installed');
+      this.veribleAvailable = false;
+      console.error('[RTL Parser MCP] Warning: Error checking Verible installation:', error);
     }
   }
 
@@ -29,19 +77,37 @@ export class VeribleWrapper {
     try {
       const content = await fs.readFile(filepath, 'utf-8');
       
-      // Use verible-verilog-syntax to get syntax tree
-      const { stdout: syntaxTree } = await execAsync(
-        `${this.verilatorPath} --printtree ${filepath}`
-      );
+      // If Verible is available, use it for better parsing
+      if (this.veribleAvailable) {
+        try {
+          // Use verible-verilog-syntax to get syntax tree
+          const { stdout: syntaxTree } = await execAsync(
+            `${this.verilatorPath} --printtree ${filepath}`
+          );
+          
+          // Parse the syntax tree to extract module information
+          const modules = this.extractModulesFromSyntaxTree(syntaxTree, filepath, content);
+          
+          return modules;
+        } catch (veribleError) {
+          logger.warn(`Verible parsing failed for ${filepath}, falling back to regex parsing:`, veribleError);
+          // Fall through to regex-based parsing
+        }
+      }
       
-      // Parse the syntax tree to extract module information
-      const modules = this.extractModulesFromSyntaxTree(syntaxTree, filepath, content);
+      // Fallback to regex-based parsing
+      logger.info(`Using regex-based parsing for ${filepath}`);
+      return this.extractModulesFromContent(filepath, content);
       
-      return modules;
     } catch (error) {
       logger.error(`Failed to parse file ${filepath}:`, error);
       throw error;
     }
+  }
+
+  private extractModulesFromContent(filepath: string, content: string): ParsedModule[] {
+    // This is the same logic as extractModulesFromSyntaxTree but renamed for clarity
+    return this.parseModulesWithRegex(content, filepath);
   }
 
   private extractModulesFromSyntaxTree(
@@ -49,6 +115,12 @@ export class VeribleWrapper {
     filepath: string,
     content: string
   ): ParsedModule[] {
+    // For now, we'll use the same regex-based parsing
+    // In the future, this could be enhanced to actually parse the Verible syntax tree
+    return this.parseModulesWithRegex(content, filepath);
+  }
+
+  private parseModulesWithRegex(content: string, filepath: string): ParsedModule[] {
     const modules: ParsedModule[] = [];
     const lines = content.split('\n');
     
@@ -181,6 +253,11 @@ export class VeribleWrapper {
   }
 
   async lintFile(filepath: string): Promise<any> {
+    if (!this.veribleAvailable) {
+      logger.warn('Verible not available, skipping lint');
+      return { violations: [] };
+    }
+    
     try {
       const { stdout } = await execAsync(
         `${this.veribleLintPath} --rules=all ${filepath}`
@@ -191,7 +268,8 @@ export class VeribleWrapper {
       if (error.stdout) {
         return this.parseLintOutput(error.stdout);
       }
-      throw error;
+      logger.error('Lint failed:', error);
+      return { violations: [] };
     }
   }
 
