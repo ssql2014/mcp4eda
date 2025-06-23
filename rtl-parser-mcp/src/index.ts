@@ -13,7 +13,7 @@ import {
 import { z } from 'zod';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { glob } from 'glob';
+import glob from 'glob';
 
 import { VeribleWrapper } from './parsers/verible-wrapper.js';
 import { CacheDatabase } from './database/cache.js';
@@ -444,10 +444,15 @@ Format the summary in a clear, readable way.`
     // Find all matching files
     const files: string[] = [];
     for (const pattern of params.file_patterns) {
-      const matches = await glob(pattern, {
-        cwd: params.root_path,
-        ignore: params.exclude_patterns,
-        absolute: true
+      const matches = await new Promise<string[]>((resolve, reject) => {
+        glob(pattern, {
+          cwd: params.root_path,
+          ignore: params.exclude_patterns,
+          absolute: true
+        }, (err, matches) => {
+          if (err) reject(err);
+          else resolve(matches);
+        });
       });
       files.push(...matches);
     }

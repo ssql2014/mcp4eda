@@ -8,7 +8,7 @@ export class QueryEngine {
   async queryRegisters(
     modules: ParsedModule[], 
     options?: { scope?: string; type?: 'flip_flop' | 'latch' | 'all' }
-  ): QueryResult<any> {
+  ): Promise<QueryResult<any>> {
     try {
       const scope = options?.scope;
       const type = options?.type || 'all';
@@ -68,7 +68,7 @@ export class QueryEngine {
     modules: ParsedModule[],
     moduleName: string,
     analysisType: 'hierarchy' | 'ports' | 'parameters' | 'all'
-  ): QueryResult<any> {
+  ): Promise<QueryResult<any>> {
     try {
       const module = modules.find(m => m.name === moduleName);
       
@@ -145,7 +145,7 @@ export class QueryEngine {
     modules: ParsedModule[],
     signalName: string,
     scope?: string
-  ): QueryResult<any> {
+  ): Promise<QueryResult<any>> {
     try {
       const results = [];
       
@@ -220,7 +220,7 @@ export class QueryEngine {
     }
   }
 
-  async getProjectStats(modules: ParsedModule[]): QueryResult<ProjectStats> {
+  async getProjectStats(modules: ParsedModule[]): Promise<QueryResult<ProjectStats>> {
     try {
       const stats: ProjectStats = {
         total_modules: modules.length,

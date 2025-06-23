@@ -12,9 +12,9 @@ export class CacheDatabase {
   constructor(dbPath: string = './rtl_cache.db') {
     this.dbPath = dbPath;
     this.db = new sqlite3.Database(dbPath);
-    this.db.run = promisify(this.db.run).bind(this.db);
-    this.db.get = promisify(this.db.get).bind(this.db) as any;
-    this.db.all = promisify(this.db.all).bind(this.db) as any;
+    (this.db as any).run = promisify(this.db.run).bind(this.db);
+    (this.db as any).get = promisify(this.db.get).bind(this.db);
+    (this.db as any).all = promisify(this.db.all).bind(this.db);
   }
 
   async initialize(): Promise<void> {
