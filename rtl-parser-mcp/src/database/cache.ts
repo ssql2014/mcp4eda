@@ -2,6 +2,7 @@ import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import * as os from 'os';
 import { ParsedModule } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 
@@ -9,16 +10,23 @@ export class CacheDatabase {
   private db: sqlite3.Database;
   private dbPath: string;
 
-  constructor(dbPath: string = path.join(process.env.HOME || '', '.rtl-parser-cache.db')) {
-    this.dbPath = dbPath;
-    console.error(`[RTL Parser MCP] Initializing database at: ${dbPath}`);
+  constructor(dbPath?: string) {
+    // Use os.homedir() which is more reliable than process.env.HOME
+    this.dbPath = dbPath || path.join(os.homedir(), '.rtl-parser-cache.db');
+    console.error(`[RTL Parser MCP] Initializing database at: ${this.dbPath}`);
     
-    this.db = new sqlite3.Database(dbPath, (err) => {
-      if (err) {
-        console.error('[RTL Parser MCP] Error opening database:', err);
-        throw err;
-      }
-    });
+    // Use verbose mode for better error messages
+    const sqlite = sqlite3.verbose();
+    
+    try {
+      this.db = new sqlite.Database(this.dbPath);
+      console.error('[RTL Parser MCP] Database opened successfully');
+    } catch (err) {
+      console.error('[RTL Parser MCP] Error opening database:', err);
+      console.error('[RTL Parser MCP] Current directory:', process.cwd());
+      console.error('[RTL Parser MCP] Database path:', this.dbPath);
+      throw err;
+    }
     
     (this.db as any).run = promisify(this.db.run).bind(this.db);
     (this.db as any).get = promisify(this.db.get).bind(this.db);

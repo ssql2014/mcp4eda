@@ -704,6 +704,7 @@ Format the summary in a clear, readable way.`
 // Start the server
 const mcp = new RTLParserMCP();
 mcp.start().catch((error) => {
-  logger.error('Failed to start server:', error);
+  console.error('[RTL Parser MCP] Fatal error during startup:', error);
+  console.error('[RTL Parser MCP] Stack trace:', error.stack);
   process.exit(1);
 });
