@@ -18,9 +18,9 @@ export class VeribleWrapper {
   private async checkVeribleInstallation(): Promise<void> {
     try {
       await execAsync('verible-verilog-syntax --version');
-      logger.info('Verible installation verified');
+      console.error('[RTL Parser MCP] Verible installation verified');
     } catch (error) {
-      logger.error('Verible not found. Please install Verible first.');
+      console.error('[RTL Parser MCP] Verible not found. Please install Verible first.');
       throw new Error('Verible not installed');
     }
   }

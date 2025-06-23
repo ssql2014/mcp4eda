@@ -1,5 +1,9 @@
 import winston from 'winston';
 
+// MCP servers must not output colored text to stdout
+// Only use colors if explicitly running in dev mode
+const isDev = process.env.NODE_ENV === 'development';
+
 export const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
@@ -10,10 +14,12 @@ export const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      )
+      format: isDev 
+        ? winston.format.combine(
+            winston.format.colorize(),
+            winston.format.simple()
+          )
+        : winston.format.json() // No colors for MCP
     })
   ]
 });

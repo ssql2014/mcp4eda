@@ -11,11 +11,11 @@ export class CacheDatabase {
 
   constructor(dbPath: string = path.join(process.env.HOME || '', '.rtl-parser-cache.db')) {
     this.dbPath = dbPath;
-    logger.info(`Initializing database at: ${dbPath}`);
+    console.error(`[RTL Parser MCP] Initializing database at: ${dbPath}`);
     
     this.db = new sqlite3.Database(dbPath, (err) => {
       if (err) {
-        logger.error('Error opening database:', err);
+        console.error('[RTL Parser MCP] Error opening database:', err);
         throw err;
       }
     });
@@ -27,7 +27,7 @@ export class CacheDatabase {
 
   async initialize(): Promise<void> {
     await this.createTables();
-    logger.info('Cache database initialized');
+    console.error('[RTL Parser MCP] Cache database initialized');
   }
 
   private async createTables(): Promise<void> {

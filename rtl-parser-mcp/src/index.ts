@@ -686,12 +686,18 @@ Format the summary in a clear, readable way.`
   }
 
   async start() {
-    await this.cache.initialize();
-    
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
-    
-    logger.info('RTL Parser MCP server started');
+    try {
+      await this.cache.initialize();
+      
+      const transport = new StdioServerTransport();
+      await this.server.connect(transport);
+      
+      // Use stderr for debug messages in MCP
+      console.error('[RTL Parser MCP] Server started successfully');
+    } catch (error) {
+      console.error('[RTL Parser MCP] Failed to start:', error);
+      throw error;
+    }
   }
 }
 
