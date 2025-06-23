@@ -5,6 +5,7 @@ import * as path from 'path';
 import { ParsedModule, Signal, Register, Port } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { VeribleSyntaxTreeParser } from './verible-syntax-tree-parser.js';
+import { VeribleASTAnalyzer } from './verible-ast-analyzer.js';
 
 const execAsync = promisify(exec);
 
@@ -13,10 +14,12 @@ export class VeribleWrapper {
   private veribleLintPath: string = 'verible-verilog-lint';
   private veribleAvailable: boolean = false;
   private syntaxTreeParser: VeribleSyntaxTreeParser;
+  private astAnalyzer: VeribleASTAnalyzer;
   private initializationPromise: Promise<void>;
   
   constructor() {
     this.syntaxTreeParser = new VeribleSyntaxTreeParser();
+    this.astAnalyzer = new VeribleASTAnalyzer();
     // Make the check non-blocking - initialize asynchronously
     this.initializationPromise = this.checkVeribleInstallation().catch(err => {
       console.error('[RTL Parser MCP] Warning: Verible check failed:', err.message);
@@ -88,27 +91,19 @@ export class VeribleWrapper {
       // If Verible is available, use it for better parsing
       if (this.veribleAvailable) {
         try {
-          console.error(`[DEBUG] Using Verible parser for ${filepath}`);
-          // Use verible-verilog-syntax to get syntax tree
+          // Directly use syntax tree parser (skip AST analyzer which has issues)
           const { stdout: syntaxTree } = await execAsync(
             `${this.verilatorPath} --printtree ${filepath}`
           );
           
           // Parse the syntax tree to extract module information
           const modules = this.extractModulesFromSyntaxTree(syntaxTree, filepath, content);
-          console.error(`[DEBUG] Verible parser returned ${modules.length} modules`);
-          for (const mod of modules) {
-            console.error(`[DEBUG] Module ${mod.name}: ${mod.registers.length} registers`);
-          }
           
           return modules;
         } catch (veribleError) {
           logger.warn(`Verible parsing failed for ${filepath}, falling back to regex parsing:`, veribleError);
-          console.error(`[DEBUG] Verible parsing failed: ${veribleError}`);
           // Fall through to regex-based parsing
         }
-      } else {
-        console.error(`[DEBUG] Verible not available, using regex parser`);
       }
       
       // Fallback to regex-based parsing
