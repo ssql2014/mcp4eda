@@ -232,6 +232,220 @@ export class AnalyzeTool extends AbstractTool<AnalyzeParams, AnalysisResult | Mo
     registers: RegisterInfo[];
     modules: Array<{ name: string; file: string; line: number; registerCount: number }>;
   }> {
+    try {
+      // Use Verible syntax parser to get the AST
+      const syntaxResult = await this.syntaxTool.execute({
+        filepath,
+        output_format: 'json'
+      });
+
+      if (!syntaxResult.success || !syntaxResult.data) {
+        logger.warn(`Failed to parse ${filepath} with Verible, falling back to regex parsing`);
+        return await this.analyzeFileWithRegex(filepath);
+      }
+
+      const registers: RegisterInfo[] = [];
+      const modules: Array<{ name: string; file: string; line: number; registerCount: number }> = [];
+
+      // Parse the JSON AST from Verible
+      const ast = syntaxResult.data;
+      
+      // Extract registers from AST
+      const moduleNodes = this.findNodesOfType(ast, 'kModuleDeclaration');
+      
+      for (const moduleNode of moduleNodes) {
+        const moduleName = this.getModuleName(moduleNode);
+        const moduleLine = this.getNodeLine(moduleNode);
+        
+        if (moduleName) {
+          modules.push({
+            name: moduleName,
+            file: filepath,
+            line: moduleLine,
+            registerCount: 0,
+          });
+
+          // Find all register declarations in this module
+          const regDeclarations = this.findRegistersInModule(moduleNode);
+          
+          for (const regDecl of regDeclarations) {
+            const regInfo = this.extractRegisterInfo(regDecl, filepath, moduleName);
+            if (regInfo) {
+              registers.push(regInfo);
+            }
+          }
+        }
+      }
+
+      // Update module register counts
+      for (const module of modules) {
+        module.registerCount = registers.filter(r => r.module === module.name).length;
+      }
+
+      return { registers, modules };
+
+    } catch (error) {
+      logger.error(`Error parsing ${filepath} with Verible:`, error);
+      // Fallback to regex-based parsing
+      return await this.analyzeFileWithRegex(filepath);
+    }
+  }
+
+  private findNodesOfType(node: any, type: string): any[] {
+    const results: any[] = [];
+    
+    if (!node) return results;
+    
+    // Check if current node matches the type
+    if (node.tag === type) {
+      results.push(node);
+    }
+    
+    // Recursively search children
+    if (node.children) {
+      for (const child of node.children) {
+        results.push(...this.findNodesOfType(child, type));
+      }
+    }
+    
+    return results;
+  }
+
+  private getModuleName(moduleNode: any): string | null {
+    // Find the module identifier in the AST
+    const identifiers = this.findNodesOfType(moduleNode, 'kUnqualifiedId');
+    if (identifiers.length > 0 && identifiers[0].text) {
+      return identifiers[0].text;
+    }
+    return null;
+  }
+
+  private getNodeLine(node: any): number {
+    // Extract line number from node location
+    if (node.start && node.start.line) {
+      return node.start.line;
+    }
+    return 1;
+  }
+
+  private findRegistersInModule(moduleNode: any): any[] {
+    const registers: any[] = [];
+    
+    // Find all data declarations
+    const dataDeclarations = this.findNodesOfType(moduleNode, 'kDataDeclaration');
+    
+    for (const decl of dataDeclarations) {
+      // Check if it's a register type (reg, logic)
+      const typeInfo = this.getDeclarationType(decl);
+      if (typeInfo && (typeInfo === 'reg' || typeInfo === 'logic')) {
+        registers.push(decl);
+      }
+    }
+    
+    // Also find registers declared in always blocks
+    const alwaysBlocks = this.findNodesOfType(moduleNode, 'kAlwaysStatement');
+    for (const block of alwaysBlocks) {
+      const blockRegs = this.findRegistersInAlwaysBlock(block);
+      registers.push(...blockRegs);
+    }
+    
+    return registers;
+  }
+
+  private getDeclarationType(declNode: any): string | null {
+    // Look for reg or logic keywords
+    const keywords = this.findNodesOfType(declNode, 'TK_reg') || this.findNodesOfType(declNode, 'TK_logic');
+    if (keywords.length > 0) {
+      return keywords[0].text || 'reg';
+    }
+    return null;
+  }
+
+  private findRegistersInAlwaysBlock(blockNode: any): any[] {
+    const registers: any[] = [];
+    
+    // Find all assignments in the always block
+    const assignments = this.findNodesOfType(blockNode, 'kNonblockingAssignmentStatement');
+    assignments.push(...this.findNodesOfType(blockNode, 'kBlockingAssignmentStatement'));
+    
+    // Track which signals are assigned in always blocks - these are registers
+    const assignedSignals = new Set<string>();
+    
+    for (const assignment of assignments) {
+      const lvalue = this.getAssignmentTarget(assignment);
+      if (lvalue) {
+        assignedSignals.add(lvalue);
+      }
+    }
+    
+    return Array.from(assignedSignals).map(signal => ({ name: signal, fromAlwaysBlock: true }));
+  }
+
+  private getAssignmentTarget(assignmentNode: any): string | null {
+    // Extract the left-hand side of an assignment
+    const identifiers = this.findNodesOfType(assignmentNode, 'kUnqualifiedId');
+    if (identifiers.length > 0) {
+      return identifiers[0].text;
+    }
+    return null;
+  }
+
+  private extractRegisterInfo(regNode: any, filepath: string, moduleName: string): RegisterInfo | null {
+    try {
+      let name: string | null = null;
+      let width = 1;
+      let type: 'flip_flop' | 'latch' | 'memory' = 'flip_flop';
+      
+      // Handle different node types
+      if (regNode.fromAlwaysBlock) {
+        // This is a signal assigned in an always block
+        name = regNode.name;
+      } else {
+        // This is a data declaration
+        const identifiers = this.findNodesOfType(regNode, 'kUnqualifiedId');
+        if (identifiers.length > 0) {
+          name = identifiers[0].text;
+        }
+        
+        // Extract width from packed dimensions
+        const dimensions = this.findNodesOfType(regNode, 'kPackedDimensions');
+        if (dimensions.length > 0) {
+          width = this.calculateWidth(dimensions[0]);
+        }
+      }
+      
+      if (!name) return null;
+      
+      return {
+        name,
+        width,
+        type,
+        file: filepath,
+        line: this.getNodeLine(regNode),
+        module: moduleName,
+      };
+    } catch (error) {
+      logger.error('Error extracting register info:', error);
+      return null;
+    }
+  }
+
+  private calculateWidth(dimensionNode: any): number {
+    // Extract MSB and LSB from dimension node
+    const numbers = this.findNodesOfType(dimensionNode, 'TK_DecNumber');
+    if (numbers.length >= 2) {
+      const msb = parseInt(numbers[0].text);
+      const lsb = parseInt(numbers[1].text);
+      return Math.abs(msb - lsb) + 1;
+    }
+    return 1;
+  }
+
+  // Fallback method using regex (original implementation)
+  private async analyzeFileWithRegex(filepath: string): Promise<{
+    registers: RegisterInfo[];
+    modules: Array<{ name: string; file: string; line: number; registerCount: number }>;
+  }> {
     const content = await fs.readFile(filepath, 'utf-8');
     const registers: RegisterInfo[] = [];
     const modules: Array<{ name: string; file: string; line: number; registerCount: number }> = [];
@@ -264,44 +478,33 @@ export class AnalyzeTool extends AbstractTool<AnalyzeParams, AnalysisResult | Mo
       }
 
       if (currentModule) {
-        // Detect register declarations
-        const regMatch = line.match(/^\s*(?:reg|logic)\s*(?:\[(\d+):(\d+)\])?\s*(\w+)/);
-        if (regMatch) {
-          const [, msb, lsb, name] = regMatch;
-          const width = msb && lsb ? Math.abs(parseInt(msb) - parseInt(lsb)) + 1 : 1;
-          
-          // Check if this is actually a register (used in always block)
-          const isRegister = this.isActualRegister(name, lines.slice(i));
-          
-          if (isRegister) {
-            const regInfo = this.detectRegisterType(name, lines.slice(i));
-            registers.push({
-              name,
-              width,
-              type: regInfo.type,
-              clock: regInfo.clock,
-              reset: regInfo.reset,
-              file: filepath,
-              line: lineNum,
-              module: currentModule,
-            });
+        // Detect register declarations - more comprehensive pattern
+        const regPatterns = [
+          /^\s*(?:reg|logic)\s*(?:\[(\d+):(\d+)\])?\s*(\w+)\s*[;,]/,
+          /^\s*(?:reg|logic)\s*(?:\[(\d+):(\d+)\])?\s*(\w+)\s*=/,
+          /^\s*(?:input\s+)?(?:reg|logic)\s*(?:\[(\d+):(\d+)\])?\s*(\w+)/,
+          /^\s*(?:output\s+)?(?:reg|logic)\s*(?:\[(\d+):(\d+)\])?\s*(\w+)/
+        ];
+        
+        for (const pattern of regPatterns) {
+          const regMatch = line.match(pattern);
+          if (regMatch) {
+            const [, msb, lsb, name] = regMatch;
+            const width = msb && lsb ? Math.abs(parseInt(msb) - parseInt(lsb)) + 1 : 1;
+            
+            // Don't duplicate if already found
+            if (!registers.some(r => r.name === name && r.module === currentModule)) {
+              registers.push({
+                name,
+                width,
+                type: 'flip_flop',
+                file: filepath,
+                line: lineNum,
+                module: currentModule,
+              });
+            }
+            break;
           }
-        }
-
-        // Also detect flip-flops declared with specific naming patterns
-        const ffMatch = line.match(/^\s*(?:reg|logic)\s*(?:\[(\d+):(\d+)\])?\s*(\w*_ff|\w*_reg|\w*_r)\s*[;,]/);
-        if (ffMatch) {
-          const [, msb, lsb, name] = ffMatch;
-          const width = msb && lsb ? Math.abs(parseInt(msb) - parseInt(lsb)) + 1 : 1;
-          
-          registers.push({
-            name,
-            width,
-            type: 'flip_flop',
-            file: filepath,
-            line: lineNum,
-            module: currentModule,
-          });
         }
       }
     }
