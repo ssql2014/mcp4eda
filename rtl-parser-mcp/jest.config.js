@@ -13,7 +13,7 @@ export default {
       },
     ],
   },
-  testMatch: ['**/tests/**/*.test.ts'],
+  testMatch: ['**/__tests__/**/*.test.ts', '**/tests/**/*.test.ts'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',

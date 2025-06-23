@@ -128,7 +128,9 @@ export class VeribleWrapper {
     const moduleRegex = /^\s*module\s+(\w+)\s*(?:#\s*\([^)]*\))?\s*\(/gm;
     const portRegex = /^\s*(input|output|inout)\s+(?:(wire|reg|logic)\s+)?(?:\[([^\]]+)\]\s+)?(\w+)/gm;
     const paramRegex = /^\s*parameter\s+(?:(\w+)\s+)?(\w+)\s*=\s*([^;,]+)/gm;
-    const regRegex = /^\s*(?:reg|logic)\s+(?:\[([^\]]+)\]\s+)?(\w+)/gm;
+    // Matches 'reg [width] name;' or 'logic [width] name;'
+    // Captures: 1: reg/logic, 2: width (optional), 3: name
+    const regDeclRegex = /^\s*(reg|logic)\s+(?:\[([^\]]+)\]\s+)?(\w+)\s*(?:,.*)?;/gm;
     const alwaysRegex = /^\s*always(?:_ff|_comb|_latch)?\s*@?\s*\(([^)]*)\)/gm;
     
     let match;
@@ -184,24 +186,32 @@ export class VeribleWrapper {
         });
       }
       
-      // Extract registers
-      regRegex.lastIndex = 0;
-      while ((match = regRegex.exec(moduleContent)) !== null) {
+      // Extract registers (signals declared as reg or logic)
+      regDeclRegex.lastIndex = 0;
+      while ((match = regDeclRegex.exec(moduleContent)) !== null) {
         const lineOffset = moduleContent.substring(0, match.index).split('\n').length - 1;
+        const signalName = match[3];
+        const signalType = match[1] as 'reg' | 'logic'; // Assert type here
+        const signalWidth = this.parseWidth(match[2]);
+
         const signal: Signal = {
-          name: match[2],
-          type: 'reg',
-          width: this.parseWidth(match[1]),
+          name: signalName,
+          type: signalType,
+          width: signalWidth,
           line: module.line + lineOffset
         };
         module.signals.push(signal);
         
-        // Check if this is a register (flip-flop or latch)
-        if (this.isRegister(match[2], moduleContent)) {
+        // Determine if this signal is a flip-flop, latch, or just a reg/logic variable
+        const registerInfo = this.analyzeSignalInAlwaysBlocks(signalName, moduleContent);
+
+        if (registerInfo.isRegister) {
           module.registers.push({
-            name: match[2],
-            type: 'flip_flop', // Will be refined by analyzing always blocks
-            width: signal.width,
+            name: signalName,
+            type: registerInfo.type, // 'flip_flop' or 'latch'
+            width: signalWidth,
+            clock: registerInfo.clock,
+            reset: registerInfo.reset, // This might be more complex to determine accurately
             line: signal.line
           });
         }
@@ -243,13 +253,70 @@ export class VeribleWrapper {
     return 1;
   }
 
-  private isRegister(signalName: string, moduleContent: string): boolean {
-    // Check if signal is assigned in an always block with clock edge
-    const clockEdgeRegex = new RegExp(
-      `always.*@.*(?:posedge|negedge).*\\n[^\\n]*${signalName}\\s*<=`,
-      'gm'
-    );
-    return clockEdgeRegex.test(moduleContent);
+  private analyzeSignalInAlwaysBlocks(signalName: string, moduleContent: string):
+    { isRegister: boolean; type: 'flip_flop' | 'latch'; clock?: string; reset?: string } {
+
+    const result: { isRegister: boolean; type: 'flip_flop' | 'latch'; clock?: string; reset?: string } = {
+      isRegister: false,
+      type: 'latch', // Default to latch, will be updated if clock edge found
+      clock: undefined,
+      reset: undefined
+    };
+
+    // Regex to find always blocks and their sensitivity lists
+    const alwaysBlockRegex = /always(?:_ff|_latch|_comb)?\s*@\s*\((.*?)\)\s*begin[\s\S]*?end/gm;
+    // Regex to find assignments to the signal within a block
+    const signalAssignmentRegex = new RegExp(`\\b${signalName}\\b\\s*<=`);
+
+    let match;
+    while ((match = alwaysBlockRegex.exec(moduleContent)) !== null) {
+      const sensitivityList = match[1];
+      const blockContent = match[0];
+
+      if (signalAssignmentRegex.test(blockContent)) {
+        result.isRegister = true; // Signal is assigned in an always block
+
+        // Check for clock edges for flip-flop detection
+        if (sensitivityList.includes('posedge') || sensitivityList.includes('negedge')) {
+          result.type = 'flip_flop';
+          // Try to extract clock signal name
+          const clockMatch = sensitivityList.match(/(?:posedge|negedge)\s+(\w+)/);
+          if (clockMatch) {
+            result.clock = clockMatch[1];
+          }
+        } else {
+          // If not explicitly a flip-flop, assume latch if it's a sequential-like block
+          // More sophisticated latch detection might be needed for combinational always blocks
+          // that infer latches due to incomplete assignments.
+          // For now, if it's in an always block and not a flip-flop, we'll call it a latch.
+          // This simplification might need refinement.
+          result.type = 'latch';
+        }
+
+        // Enhanced reset detection
+        // Try to find async reset in sensitivity list (e.g., "posedge clk or negedge rst_n" or "posedge clk, negedge rst")
+        const asyncResetMatch = sensitivityList.match(/(?:posedge|negedge)\s+\w+\s*(?:or|,)\s*(?:posedge|negedge)\s+(\w+)/);
+        if (asyncResetMatch && asyncResetMatch[1]) {
+          result.reset = asyncResetMatch[1];
+        } else {
+          // Try to find sync reset in block content (e.g., if (reset) signal <= ... or if (!reset_n) signal <= ...)
+          // This regex looks for an if statement condition that seems like a reset (contains 'reset' or 'rst')
+          // and is not the clock signal.
+          const syncResetPattern = new RegExp(
+            `if\\s*\\(\\s*(!?\\s*\\b(\\w*(?:reset|rst)\\w*)\\b)\\s*\\)[\\s\\S]*?${signalName}\\s*<=`,
+            'i' // case-insensitive for reset signal names
+          );
+          const syncResetMatch = blockContent.match(syncResetPattern);
+          if (syncResetMatch && syncResetMatch[2] && syncResetMatch[2].toLowerCase() !== result.clock?.toLowerCase()) {
+            result.reset = syncResetMatch[2];
+          }
+        }
+
+        // If it's a flip-flop, we prioritize that finding.
+        if (result.type === 'flip_flop') break;
+      }
+    }
+    return result;
   }
 
   async lintFile(filepath: string): Promise<any> {
