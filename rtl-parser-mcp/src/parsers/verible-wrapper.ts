@@ -4,6 +4,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ParsedModule, Signal, Register, Port } from '../types/index.js';
 import { logger } from '../utils/logger.js';
+import { VeribleSyntaxTreeParser } from './verible-syntax-tree-parser.js';
 
 const execAsync = promisify(exec);
 
@@ -11,12 +12,19 @@ export class VeribleWrapper {
   private verilatorPath: string = 'verible-verilog-syntax';
   private veribleLintPath: string = 'verible-verilog-lint';
   private veribleAvailable: boolean = false;
+  private syntaxTreeParser: VeribleSyntaxTreeParser;
+  private initializationPromise: Promise<void>;
   
   constructor() {
+    this.syntaxTreeParser = new VeribleSyntaxTreeParser();
     // Make the check non-blocking - initialize asynchronously
-    this.checkVeribleInstallation().catch(err => {
+    this.initializationPromise = this.checkVeribleInstallation().catch(err => {
       console.error('[RTL Parser MCP] Warning: Verible check failed:', err.message);
     });
+  }
+  
+  async waitForInitialization(): Promise<void> {
+    await this.initializationPromise;
   }
 
   private async checkVeribleInstallation(): Promise<void> {
@@ -80,6 +88,7 @@ export class VeribleWrapper {
       // If Verible is available, use it for better parsing
       if (this.veribleAvailable) {
         try {
+          console.error(`[DEBUG] Using Verible parser for ${filepath}`);
           // Use verible-verilog-syntax to get syntax tree
           const { stdout: syntaxTree } = await execAsync(
             `${this.verilatorPath} --printtree ${filepath}`
@@ -87,12 +96,19 @@ export class VeribleWrapper {
           
           // Parse the syntax tree to extract module information
           const modules = this.extractModulesFromSyntaxTree(syntaxTree, filepath, content);
+          console.error(`[DEBUG] Verible parser returned ${modules.length} modules`);
+          for (const mod of modules) {
+            console.error(`[DEBUG] Module ${mod.name}: ${mod.registers.length} registers`);
+          }
           
           return modules;
         } catch (veribleError) {
           logger.warn(`Verible parsing failed for ${filepath}, falling back to regex parsing:`, veribleError);
+          console.error(`[DEBUG] Verible parsing failed: ${veribleError}`);
           // Fall through to regex-based parsing
         }
+      } else {
+        console.error(`[DEBUG] Verible not available, using regex parser`);
       }
       
       // Fallback to regex-based parsing
@@ -115,9 +131,14 @@ export class VeribleWrapper {
     filepath: string,
     content: string
   ): ParsedModule[] {
-    // For now, we'll use the same regex-based parsing
-    // In the future, this could be enhanced to actually parse the Verible syntax tree
-    return this.parseModulesWithRegex(content, filepath);
+    try {
+      // Use the new syntax tree parser
+      return this.syntaxTreeParser.parseSyntaxTree(syntaxTree, filepath, content);
+    } catch (error) {
+      logger.warn('Failed to parse Verible syntax tree, falling back to regex:', error);
+      // Fall back to regex parsing if syntax tree parsing fails
+      return this.parseModulesWithRegex(content, filepath);
+    }
   }
 
   private parseModulesWithRegex(content: string, filepath: string): ParsedModule[] {

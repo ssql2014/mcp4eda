@@ -689,6 +689,9 @@ Format the summary in a clear, readable way.`
     try {
       await this.cache.initialize();
       
+      // Wait for Verible to initialize
+      await this.verible.waitForInitialization();
+      
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
       

@@ -36,7 +36,7 @@ export interface Signal {
 
 export interface Register {
   name: string;
-  type: 'flip_flop' | 'latch';
+  type: 'flip_flop' | 'latch' | 'potential_register';
   clock?: string;
   reset?: string;
   width: number;
