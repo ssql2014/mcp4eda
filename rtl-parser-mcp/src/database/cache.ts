@@ -9,9 +9,17 @@ export class CacheDatabase {
   private db: sqlite3.Database;
   private dbPath: string;
 
-  constructor(dbPath: string = './rtl_cache.db') {
+  constructor(dbPath: string = path.join(process.env.HOME || '', '.rtl-parser-cache.db')) {
     this.dbPath = dbPath;
-    this.db = new sqlite3.Database(dbPath);
+    logger.info(`Initializing database at: ${dbPath}`);
+    
+    this.db = new sqlite3.Database(dbPath, (err) => {
+      if (err) {
+        logger.error('Error opening database:', err);
+        throw err;
+      }
+    });
+    
     (this.db as any).run = promisify(this.db.run).bind(this.db);
     (this.db as any).get = promisify(this.db.get).bind(this.db);
     (this.db as any).all = promisify(this.db.all).bind(this.db);
