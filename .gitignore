@@ -60,6 +60,7 @@ dist
 
 # Project specific
 verible-*
+!verible-mcp/
 *.tar.gz
 calculate_die_count.js
 .DS_Store

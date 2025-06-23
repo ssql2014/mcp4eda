@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "verible": {
+      "command": "node",
+      "args": [
+        "/Users/qlss/Documents/mcp4eda/verible-mcp/dist/index.js"
+      ],
+      "env": {
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}
