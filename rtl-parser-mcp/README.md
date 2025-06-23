@@ -4,26 +4,56 @@ MCP (Model Context Protocol) server for parsing and analyzing RTL (Register Tran
 
 ## Features
 
-- Parse Verilog/SystemVerilog files
-- Query register information (flip-flops, latches)
-- Analyze module hierarchy, ports, and parameters
-- Trace signal usage across modules
-- Cached parsing results for performance
+- 🔍 Parse Verilog/SystemVerilog files with full syntax analysis
+- 📊 Query register information (flip-flops, latches) with detailed statistics
+- 🏗️ Analyze module hierarchy, ports, and parameters
+- 🔗 Trace signal usage across modules
+- 💬 Natural language queries for RTL analysis
+- 💾 Cached parsing results for performance
+- 🎯 Pre-defined prompts for common analysis tasks
 
 ## Prerequisites
 
-1. Install Verible:
-```bash
-# macOS
-brew install verible
+### 1. Install Verible
 
-# Linux (download from releases)
-wget https://github.com/chipsalliance/verible/releases/download/v0.0-3428-gcfcbb82b/verible-v0.0-3428-gcfcbb82b-Ubuntu-20.04-focal-x86_64.tar.gz
-tar -xf verible-*.tar.gz
-export PATH=$PATH:$(pwd)/verible-v0.0-3428-gcfcbb82b/bin
+#### Option A: Using Homebrew (Recommended for macOS)
+```bash
+# Add Verible tap
+brew tap chipsalliance/verible
+
+# Install Verible
+brew install verible
 ```
 
-2. Install Node.js dependencies:
+#### Option B: Download Pre-built Binaries
+
+**macOS:**
+```bash
+# Download latest release
+curl -L https://github.com/chipsalliance/verible/releases/latest/download/verible-v0.0-latest-macOS.tar.gz -o verible-macos.tar.gz
+
+# Extract
+tar -xzf verible-macos.tar.gz
+
+# Copy to local bin
+mkdir -p ~/.local/bin
+cp verible-*/bin/* ~/.local/bin/
+
+# Add to PATH (add to ~/.zshrc or ~/.bashrc)
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+**Linux:**
+```bash
+# Download latest release (adjust URL for your distribution)
+wget https://github.com/chipsalliance/verible/releases/latest/download/verible-v0.0-latest-Ubuntu-20.04-focal-x86_64.tar.gz
+
+# Extract and install
+tar -xzf verible-*.tar.gz
+sudo cp verible-*/bin/* /usr/local/bin/
+```
+
+### 2. Install Node.js dependencies
 ```bash
 cd rtl-parser-mcp
 npm install
@@ -37,14 +67,18 @@ npm run build
 
 ## Configuration
 
-Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+Add to your Claude Desktop configuration:
+
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`  
+**Linux:** `~/.config/Claude/claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "rtl-parser": {
       "command": "node",
-      "args": ["/path/to/rtl-parser-mcp/dist/index.js"],
+      "args": ["/absolute/path/to/rtl-parser-mcp/dist/index.js"],
       "env": {
         "LOG_LEVEL": "info"
       }
@@ -52,6 +86,8 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
   }
 }
 ```
+
+**Important:** Replace `/absolute/path/to/` with your actual path.
 
 ## Available Tools
 
@@ -128,72 +164,135 @@ Query RTL design using natural language.
 - `find_issues` - Find potential issues in RTL design
 - `summarize_module` - Summarize a specific module
 
-## Usage Examples
+## Usage in Claude Desktop
 
-### Basic Usage
+### Quick Start Guide
 
-```javascript
-// Parse a project
-await mcp.parse_project({
-  root_path: "/path/to/rtl/project",
-  file_patterns: ["*.v", "*.sv"]
-});
+1. **Start a conversation** with Claude Desktop
+2. **Tell Claude about your RTL files** using full paths:
+   - "Parse my Verilog file at `/path/to/design.v`"
+   - "Analyze the RTL project in `/path/to/project/`"
+   - "I have Verilog files in `/Users/username/fpga-project`"
 
-// Query registers
-const registers = await mcp.query_registers({
-  type: "flip_flop"
-});
+### Example Conversations
 
-// Analyze module
-const moduleInfo = await mcp.analyze_module({
-  module_name: "cpu_core",
-  analysis_type: "all"
-});
+#### Basic File Analysis
+```
+User: "Please analyze /Users/john/projects/cpu_design/alu.v"
+Claude: [Uses parse_file tool to analyze the file and provides summary]
 ```
 
-### Natural Language Queries
-
-```javascript
-// Ask questions in natural language
-await mcp.natural_language_query({
-  query: "How many registers are in the cpu_core module?"
-});
-
-await mcp.natural_language_query({
-  query: "Where is signal 'clk' used?"
-});
-
-await mcp.natural_language_query({
-  query: "Show me the ports of module alu"
-});
+#### Project-wide Analysis
+```
+User: "Analyze all Verilog files in /Users/john/projects/riscv-core"
+Claude: [Uses parse_project to scan directory and analyze all .v/.sv files]
 ```
 
-### Using Prompts
+#### Natural Language Queries
+```
+User: "How many flip-flops are in my design?"
+Claude: [Uses natural_language_query to count registers]
 
-```javascript
-// Get comprehensive design analysis
-await mcp.get_prompt("analyze_design", {
-  focus_area: "clock domains"
-});
+User: "Where is the clock signal used?"
+Claude: [Traces 'clk' signal usage across modules]
 
-// Find potential issues
-await mcp.get_prompt("find_issues");
-
-// Summarize a module
-await mcp.get_prompt("summarize_module", {
-  module_name: "cpu_core"
-});
+User: "Show me the hierarchy of the cpu_core module"
+Claude: [Analyzes module structure and instantiations]
 ```
 
-## Development
+#### Using Prompts for Analysis
+```
+User: "Give me a comprehensive analysis of my RTL design"
+Claude: [Uses analyze_design prompt to provide detailed analysis]
 
+User: "Find potential issues in my Verilog code"
+Claude: [Uses find_issues prompt to identify problems]
+```
+
+### Finding Your Verilog Files
+
+If you're not sure where your files are:
+```
+User: "Help me find Verilog files on my system"
+Claude: [Can help locate .v and .sv files]
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Server disconnected" error**
+   - Check if Verible is installed: `verible-verilog-syntax --version`
+   - Verify the path in claude_desktop_config.json is correct
+   - Check logs at `~/Library/Logs/Claude/mcp-server-rtl-parser.log`
+
+2. **"SQLITE_CANTOPEN" error**
+   - Fixed in latest version - database now uses home directory
+   - Clear old cache: `rm -f ./rtl_cache.db`
+
+3. **"Command not found: verible-verilog-syntax"**
+   - Ensure Verible is in PATH
+   - Restart terminal after adding to PATH
+   - Try full path: `/Users/username/.local/bin/verible-verilog-syntax`
+
+### Viewing Logs
+
+**macOS:**
 ```bash
-# Run in development mode
-npm run dev
+# View RTL Parser logs
+tail -f ~/Library/Logs/Claude/mcp-server-rtl-parser.log
 
-# Run tests
-npm test
-
-# Lint code
-npm run lint
+# View general MCP logs
+tail -f ~/Library/Logs/Claude/mcp.log
 ```
+
+### Debug Mode
+
+Enable debug logging by setting in claude_desktop_config.json:
+```json
+"env": {
+  "LOG_LEVEL": "debug"
+}
+```
+
+## Examples
+
+### Example 1: Analyzing a CPU Design
+```verilog
+// cpu_core.v
+module cpu_core (
+    input clk,
+    input rst_n,
+    output [31:0] pc
+);
+    reg [31:0] pc_reg;
+    reg [31:0] instruction;
+    // ... more code
+endmodule
+```
+
+Commands in Claude:
+- "Parse /path/to/cpu_core.v"
+- "How many registers does cpu_core have?"
+- "Show me all the ports of cpu_core"
+
+### Example 2: Project Statistics
+- "Parse all files in /my/rtl/project"
+- "Give me overall statistics"
+- "Which module has the most flip-flops?"
+
+## API Reference
+
+For detailed API documentation, see [docs/api.md](docs/api.md)
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+MIT License - see LICENSE file for details
