@@ -83,7 +83,7 @@ export class AnalyzeTool extends AbstractTool<AnalyzeParams, AnalysisResult> {
       script.push('stat');
     }
 
-    const result = await this.runner.runScript(script);
+    const result = await this.runner.runScript(script, { quiet: false });
     return YosysParser.parseStats(result.stdout);
   }
 
@@ -107,7 +107,7 @@ export class AnalyzeTool extends AbstractTool<AnalyzeParams, AnalysisResult> {
       script.push('check -initdrv');
     }
 
-    const result = await this.runner.runScript(script);
+    const result = await this.runner.runScript(script, { quiet: false });
     const checkData = YosysParser.parseCheck(result.stdout + '\n' + result.stderr);
 
     return checkData;
@@ -133,7 +133,7 @@ export class AnalyzeTool extends AbstractTool<AnalyzeParams, AnalysisResult> {
       script.push('ls');
     }
 
-    const result = await this.runner.runScript(script);
+    const result = await this.runner.runScript(script, { quiet: false });
     
     // Try to get hierarchy from output
     let hierarchyData: HierarchyData;
@@ -194,7 +194,7 @@ export class AnalyzeTool extends AbstractTool<AnalyzeParams, AnalysisResult> {
     // Get detailed statistics
     script.push('stat -tech ' + params.target);
 
-    const result = await this.runner.runScript(script);
+    const result = await this.runner.runScript(script, { quiet: false });
     return YosysParser.parseResources(result.stdout, params.target);
   }
 }

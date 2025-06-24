@@ -65,8 +65,9 @@ class VeribleMCPServer {
     // Initialize all tools
     this.tools.set('verible_lint', new LintTool(this.configManager, this.cacheManager));
     this.tools.set('verible_format', new FormatTool(this.configManager, this.cacheManager));
-    this.tools.set('verible_syntax', new SyntaxTool(this.configManager, this.cacheManager));
-    this.tools.set('verible_analyze', new AnalyzeTool(this.configManager, this.cacheManager));
+    const syntaxTool = new SyntaxTool(this.configManager, this.cacheManager);
+    this.tools.set('verible_syntax', syntaxTool);
+    this.tools.set('verible_analyze', new AnalyzeTool(this.configManager, this.cacheManager, syntaxTool));
     this.tools.set('verible_project', new ProjectTool(this.configManager, this.cacheManager));
     this.tools.set('verible_diff', new DiffTool(this.configManager, this.cacheManager));
     this.tools.set('verible_obfuscate', new ObfuscateTool(this.configManager, this.cacheManager));

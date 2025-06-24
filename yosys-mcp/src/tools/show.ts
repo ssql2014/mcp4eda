@@ -89,7 +89,20 @@ export class ShowTool extends AbstractTool<ShowParams, VisualizationResult> {
       // Handle output based on parameters
       let responseData: VisualizationResult;
 
-      if (params.returnBase64 && params.format !== 'dot') {
+      if (params.format === 'dot') {
+        // For DOT format, always return the content as text
+        const dotContent = await fs.readFile(generatedFile, 'utf-8');
+        
+        responseData = {
+          success: true,
+          format: params.format,
+          data: {
+            visualization: dotContent,
+          },
+          filePath: outputFile,
+          metadata: {},
+        };
+      } else if (params.returnBase64) {
         // Read file and convert to base64
         const fileData = await fs.readFile(generatedFile);
         const base64Data = fileData.toString('base64');
@@ -163,19 +176,11 @@ export class ShowTool extends AbstractTool<ShowParams, VisualizationResult> {
     showCmd += ` -prefix ${outputPrefix}`;
 
     // Add color scheme options
-    switch (params.colorScheme) {
-      case 'dark':
-        showCmd += ' -colors dark';
-        break;
-      case 'colorblind':
-        showCmd += ' -colorblind';
-        break;
-    }
+    // Note: Yosys show command has limited color options
+    // Color customization would need to be done in post-processing
 
     // Include constants if requested
-    if (!params.includeConstants) {
-      showCmd += ' -noc';
-    }
+    // Note: Constant inclusion is always enabled in basic show command
 
     // Add module name if specified
     if (params.moduleName) {

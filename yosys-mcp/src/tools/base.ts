@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { ConfigManager } from '../utils/config.js';
@@ -79,10 +80,10 @@ export abstract class AbstractTool<TParams = any, TResult extends ToolResult = T
    * Get input schema for the tool
    */
   getInputSchema(): any {
-    return {
-      type: 'object',
-      properties: this.schema._def,
-    };
+    const jsonSchema = zodToJsonSchema(this.schema);
+    // Remove the $schema property as it's not needed for MCP
+    const { $schema, ...schema } = jsonSchema as any;
+    return schema;
   }
 
   /**

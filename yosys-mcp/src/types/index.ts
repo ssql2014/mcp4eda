@@ -19,19 +19,22 @@ export interface ToolResult {
 
 // Synthesis results
 export interface SynthesisResult extends ToolResult {
-  stats?: {
-    modules: number;
-    wires: number;
-    memories: number;
-    processes: number;
-    cells: {
-      total: number;
-      byType: Record<string, number>;
+  data?: {
+    netlist?: string;
+    stats?: {
+      modules: number;
+      wires: number;
+      memories: number;
+      processes: number;
+      cells: {
+        total: number;
+        byType: Record<string, number>;
+      };
     };
+    gateCount?: number;
+    registerCount?: number;
+    lutCount?: number;
   };
-  gateCount?: number;
-  registerCount?: number;
-  lutCount?: number;
   warnings?: string[];
   outputFile?: string;
 }
@@ -105,7 +108,7 @@ export interface ResourceData {
 // Visualization result
 export interface VisualizationResult extends ToolResult {
   format: 'dot' | 'svg' | 'pdf' | 'png';
-  data?: string; // Base64 encoded for images
+  data?: string | { visualization: string }; // Base64 encoded for images or DOT content
   filePath?: string; // Path to generated file
 }
 

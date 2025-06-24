@@ -32,6 +32,7 @@ export class SyntaxTool extends AbstractTool<SyntaxParams, SyntaxResult> {
     // Output format options
     if (params.output_format === 'json' || params.export_json) {
       args.push('--export_json');
+      args.push('--printtree'); // Need both flags for JSON output with tree
     } else if (params.output_format === 'tree' || params.printtree) {
       args.push('--printtree');
     } else if (params.output_format === 'tokens') {

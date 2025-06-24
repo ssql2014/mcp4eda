@@ -8,6 +8,7 @@ export interface ExecutorOptions {
   env?: NodeJS.ProcessEnv;
   input?: string;
   maxBuffer?: number;
+  quiet?: boolean;
 }
 
 export class CommandExecutor {
@@ -128,7 +129,8 @@ export class CommandExecutor {
     options?: ExecutorOptions
   ): Promise<CommandResult> {
     // Write script to stdin
-    return this.execute(yosysPath, ['-q', '-'], {
+    const args = options?.quiet === false ? ['-'] : ['-q', '-'];
+    return this.execute(yosysPath, args, {
       ...options,
       input: script,
     });

@@ -84,15 +84,28 @@ export class SynthTool extends AbstractTool<SynthParams, SynthesisResult> {
         };
       }
 
+      // Read the synthesized netlist if it was generated
+      let netlist;
+      try {
+        const fs = await import('fs/promises');
+        netlist = await fs.readFile(outputPath, 'utf-8');
+      } catch (error) {
+        // File might not exist or might be too large
+        netlist = undefined;
+      }
+
       // Clean up temporary directory
       await this.runner.cleanupTempDir(tempDir);
 
       return {
         success: true,
-        stats,
-        gateCount: summary.gateCount,
-        registerCount: summary.registerCount,
-        lutCount: summary.lutCount,
+        data: {
+          netlist,
+          stats,
+          gateCount: summary.gateCount,
+          registerCount: summary.registerCount,
+          lutCount: summary.lutCount,
+        },
         warnings: warnings,
         outputFile: outputPath,
         metadata: {
