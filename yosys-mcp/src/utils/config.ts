@@ -33,7 +33,7 @@ export class ConfigManager {
     this.yosysPath = await this.findYosys();
     if (this.yosysPath) {
       this.yosysVersion = await this.getYosysVersion();
-      logger.info(`Found Yosys ${this.yosysVersion} at ${this.yosysPath}`);
+      logger.debug(`Found Yosys ${this.yosysVersion} at ${this.yosysPath}`);
     }
 
     this.initialized = true;
