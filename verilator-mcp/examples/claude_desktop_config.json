@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "verilator": {
+      "command": "node",
+      "args": ["./dist/index.js"],
+      "cwd": "/Users/username/Documents/mcp4eda/verilator-mcp",
+      "env": {
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}

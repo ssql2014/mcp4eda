@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+*.lcov
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Cache
+.cache/
+.npm/
+
+# Debug files
+debug_output.txt
+test_*.js
+test-*.js
+!test/
+
+# Lock files (optional - uncomment if you don't want to commit lock files)
+# package-lock.json
+# yarn.lock

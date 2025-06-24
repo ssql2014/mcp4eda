@@ -1,6 +1,0 @@
-[submodule "verilator-mcp"]
-	path = verilator-mcp
-	url = https://github.com/ssql2014/verilator-mcp.git
-[submodule "semiconductor-supply-chain-mcp"]
-	path = semiconductor-supply-chain-mcp
-	url = https://github.com/ssql2014/semiconductor-supply-chain-mcp.git

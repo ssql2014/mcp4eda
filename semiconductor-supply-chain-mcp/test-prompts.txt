@@ -1,0 +1,26 @@
+=== Test Prompts for Claude Desktop ===
+
+1. Basic tool discovery:
+"What tools are available in the semiconductor supply chain MCP?"
+
+2. Find IP vendors:
+"Find me DDR5 PHY IP vendors that support 7nm process technology"
+
+3. Find ASIC services:
+"I need ASIC design services for a 7nm chip. What providers are available?"
+
+4. Price estimation:
+"What would be the estimated NRE cost for a high-complexity ASIC in 7nm technology?"
+
+5. Vendor comparison:
+"Compare Synopsys, Cadence, and Siemens for PHY IP offerings"
+
+6. Natural language query:
+"Help me find three vendors that can provide low-power DDR5 PHY IP for TSMC 28nm process"
+
+7. Complex request:
+"I'm designing a networking chip and need:
+- 100G Ethernet PHY IP
+- PCIe Gen5 controller
+- DDR5 memory interface
+Find suitable vendors and estimate the total IP licensing cost"
