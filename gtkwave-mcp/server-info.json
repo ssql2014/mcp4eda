@@ -1,0 +1,102 @@
+{
+  "id": "gtkwave-mcp",
+  "name": {
+    "en": "GTKWave MCP Server",
+    "zh": "GTKWave MCP 服务器"
+  },
+  "description": {
+    "en": "Programmatic access to GTKWave's waveform viewing and analysis capabilities for automated EDA workflows",
+    "zh": "对 GTKWave 波形查看和分析功能的程序化访问，用于自动化 EDA 工作流程"
+  },
+  "categories": {
+    "en": ["Waveform Analysis", "Simulation Visualization", "Debug Tools"],
+    "zh": ["波形分析", "仿真可视化", "调试工具"]
+  },
+  "features": {
+    "en": [
+      "Open and display multiple waveform formats (VCD, FST, LXT2)",
+      "Convert between waveform formats with compression",
+      "Extract signal hierarchies with pattern matching",
+      "Perform timing measurements and analysis",
+      "Generate TCL scripts for automation",
+      "Capture waveform screenshots"
+    ],
+    "zh": [
+      "打开并显示多种波形格式 (VCD, FST, LXT2)",
+      "在波形格式之间转换，支持压缩",
+      "使用模式匹配提取信号层次",
+      "执行时序测量和分析",
+      "生成用于自动化的 TCL 脚本",
+      "捕获波形截图"
+    ]
+  },
+  "tools": [
+    {
+      "name": "gtkwave_open",
+      "description": {
+        "en": "Open waveform files in GTKWave viewer",
+        "zh": "在 GTKWave 查看器中打开波形文件"
+      }
+    },
+    {
+      "name": "gtkwave_convert",
+      "description": {
+        "en": "Convert between waveform formats",
+        "zh": "在波形格式之间转换"
+      }
+    },
+    {
+      "name": "gtkwave_extract_signals",
+      "description": {
+        "en": "Extract signal hierarchies from waveforms",
+        "zh": "从波形中提取信号层次"
+      }
+    },
+    {
+      "name": "gtkwave_analyze_timing",
+      "description": {
+        "en": "Perform timing measurements and analysis",
+        "zh": "执行时序测量和分析"
+      }
+    },
+    {
+      "name": "gtkwave_generate_script",
+      "description": {
+        "en": "Generate TCL scripts for automation",
+        "zh": "生成用于自动化的 TCL 脚本"
+      }
+    },
+    {
+      "name": "gtkwave_capture_screenshot",
+      "description": {
+        "en": "Capture waveform display screenshots",
+        "zh": "捕获波形显示截图"
+      }
+    }
+  ],
+  "requirements": {
+    "en": [
+      "GTKWave 3.3.0 or higher",
+      "Node.js 18.0.0 or higher",
+      "GTKWave utilities (vcd2fst, fst2vcd) in PATH"
+    ],
+    "zh": [
+      "GTKWave 3.3.0 或更高版本",
+      "Node.js 18.0.0 或更高版本",
+      "GTKWave 实用程序 (vcd2fst, fst2vcd) 在 PATH 中"
+    ]
+  },
+  "repository": "https://github.com/mcp4eda/mcp4eda/tree/main/gtkwave-mcp",
+  "documentation": "https://github.com/mcp4eda/mcp4eda/blob/main/gtkwave-mcp/README.md",
+  "version": "0.1.0",
+  "author": "MCP4EDA Contributors",
+  "license": "MIT",
+  "tags": ["gtkwave", "waveform", "vcd", "fst", "simulation", "eda", "visualization", "timing"],
+  "installation": {
+    "command": "node",
+    "args": ["path/to/gtkwave-mcp/dist/index.js"],
+    "env": {
+      "GTKWAVE_PATH": "/usr/local/bin/gtkwave"
+    }
+  }
+}
