@@ -9,6 +9,9 @@ import {
   ImageContent,
   ErrorCode,
   McpError,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+  Resource,
 } from '@modelcontextprotocol/sdk/types.js';
 import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
@@ -45,6 +48,7 @@ class GTKWaveServer {
       {
         capabilities: {
           tools: {},
+          resources: {},
         },
       }
     );
@@ -250,6 +254,34 @@ class GTKWaveServer {
             required: ['waveformFile', 'outputFile'],
           },
         },
+        {
+          name: 'gtkwave_natural_language',
+          description: 'Process natural language queries about waveform analysis',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'Natural language query about waveform viewing or analysis',
+              },
+              context: {
+                type: 'object',
+                properties: {
+                  waveformFile: {
+                    type: 'string',
+                    description: 'Current waveform file being analyzed',
+                  },
+                  signals: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Signals of interest',
+                  },
+                },
+              },
+            },
+            required: ['query'],
+          },
+        },
       ],
     }));
 
@@ -267,10 +299,152 @@ class GTKWaveServer {
           return await this.handleGenerateScript(request.params.arguments);
         case 'gtkwave_capture_screenshot':
           return await this.handleCaptureScreenshot(request.params.arguments);
+        case 'gtkwave_natural_language':
+          return await this.handleNaturalLanguage(request.params.arguments);
         default:
           throw new McpError(
             ErrorCode.MethodNotFound,
             `Unknown tool: ${request.params.name}`
+          );
+      }
+    });
+
+    // Add resources support
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+      resources: [
+        {
+          uri: 'gtkwave://formats',
+          name: 'Supported Waveform Formats',
+          description: 'Information about waveform formats supported by GTKWave',
+          mimeType: 'application/json',
+        },
+        {
+          uri: 'gtkwave://tcl-commands',
+          name: 'GTKWave TCL Commands Reference',
+          description: 'Common TCL commands for GTKWave automation',
+          mimeType: 'text/markdown',
+        },
+        {
+          uri: 'gtkwave://timing-measurements',
+          name: 'Timing Measurement Types',
+          description: 'Available timing measurements and their descriptions',
+          mimeType: 'application/json',
+        },
+      ],
+    }));
+
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      const { uri } = request.params;
+      
+      switch (uri) {
+        case 'gtkwave://formats':
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify({
+                  formats: {
+                    vcd: {
+                      name: 'Value Change Dump',
+                      extension: '.vcd',
+                      description: 'IEEE standard format for waveform data',
+                      features: ['ASCII format', 'Human readable', 'Wide tool support'],
+                    },
+                    fst: {
+                      name: 'Fast Signal Trace',
+                      extension: '.fst',
+                      description: 'Compressed binary format by GTKWave',
+                      features: ['High compression', 'Fast loading', 'Efficient storage'],
+                    },
+                    lxt2: {
+                      name: 'LXT2',
+                      extension: '.lxt2',
+                      description: 'Compressed waveform format',
+                      features: ['Good compression', 'Fast access', 'GTKWave native'],
+                    },
+                  },
+                }, null, 2),
+              },
+            ],
+          };
+          
+        case 'gtkwave://tcl-commands':
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'text/markdown',
+                text: `# GTKWave TCL Commands Reference
+
+## File Operations
+- \`gtkwave::loadFile "filename.vcd"\` - Load waveform file
+- \`gtkwave::loadSaveFile "signals.gtkw"\` - Load saved signals
+- \`gtkwave::hardcopy "output.png" png\` - Save screenshot
+
+## Signal Operations
+- \`gtkwave::addSignalsFromList "signal.name"\` - Add signal to viewer
+- \`gtkwave::deleteSignalsFromList {sig1 sig2}\` - Remove signals
+- \`gtkwave::highlightSignalsFromList {sig1 sig2}\` - Highlight signals
+
+## Time Navigation
+- \`gtkwave::setFromTime "0"\` - Set start time
+- \`gtkwave::setToTime "1000ns"\` - Set end time
+- \`gtkwave::setMarker "100ns"\` - Set cursor position
+- \`gtkwave::getMarker\` - Get current cursor position
+
+## Display Control
+- \`gtkwave::setWindowSize 1200 800\` - Set window dimensions
+- \`gtkwave::setZoomFactor 0.5\` - Set zoom level
+- \`gtkwave::centerMarker\` - Center view on cursor
+
+## Measurements
+- \`gtkwave::measureSetup sig1 sig2\` - Measure setup time
+- \`gtkwave::measureHold sig1 sig2\` - Measure hold time
+- \`gtkwave::measurePeriod sig\` - Measure signal period
+`,
+              },
+            ],
+          };
+          
+        case 'gtkwave://timing-measurements':
+          return {
+            contents: [
+              {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify({
+                  measurements: {
+                    setup: {
+                      description: 'Time data must be stable before clock edge',
+                      requires: ['data_signal', 'clock_signal'],
+                    },
+                    hold: {
+                      description: 'Time data must remain stable after clock edge',
+                      requires: ['data_signal', 'clock_signal'],
+                    },
+                    propagation: {
+                      description: 'Delay between input change and output change',
+                      requires: ['input_signal', 'output_signal'],
+                    },
+                    pulse_width: {
+                      description: 'Duration of high or low pulse',
+                      requires: ['signal'],
+                    },
+                    frequency: {
+                      description: 'Signal frequency measurement',
+                      requires: ['signal'],
+                    },
+                  },
+                }, null, 2),
+              },
+            ],
+          };
+          
+        default:
+          throw new McpError(
+            ErrorCode.ResourceNotFound,
+            `Unknown resource: ${uri}`
           );
       }
     });
@@ -611,6 +785,108 @@ gtkwave::loadFile "${waveformFile}"
     }
 
     return script;
+  }
+
+  private async handleNaturalLanguage(args: any): Promise<CallToolResult> {
+    const { query, context } = args;
+    const lowerQuery = query.toLowerCase();
+
+    try {
+      // Parse natural language queries
+      if (lowerQuery.includes('convert') && (lowerQuery.includes('vcd') || lowerQuery.includes('fst'))) {
+        // Handle format conversion queries
+        const match = query.match(/convert\s+(\S+\.(?:vcd|fst|lxt2))\s+to\s+(\w+)/i);
+        if (match) {
+          return await this.handleConvert({
+            inputFile: match[1],
+            outputFile: match[1].replace(/\.\w+$/, `.${match[2]}`),
+            format: match[2],
+            compress: lowerQuery.includes('compress'),
+          });
+        }
+      }
+
+      if (lowerQuery.includes('open') || lowerQuery.includes('view')) {
+        // Handle file opening queries
+        const fileMatch = query.match(/['""]?([^'""\s]+\.(?:vcd|fst|lxt2|gtkw))['""]?/i);
+        if (fileMatch) {
+          return await this.handleOpen({
+            waveformFile: fileMatch[1],
+            background: lowerQuery.includes('background'),
+          });
+        }
+      }
+
+      if (lowerQuery.includes('signal') && (lowerQuery.includes('list') || lowerQuery.includes('extract'))) {
+        // Handle signal extraction queries
+        const fileMatch = query.match(/from\s+['""]?([^'""\s]+\.(?:vcd|fst|lxt2))['""]?/i);
+        const patternMatch = query.match(/(?:matching|like|pattern)\s+['""]?([^'""\s]+)['""]?/i);
+        
+        if (fileMatch) {
+          return await this.handleExtractSignals({
+            waveformFile: fileMatch[1],
+            hierarchical: lowerQuery.includes('hierarch'),
+            pattern: patternMatch ? patternMatch[1] : undefined,
+          });
+        }
+      }
+
+      if (lowerQuery.includes('timing') || lowerQuery.includes('measure')) {
+        // Handle timing analysis queries
+        if (context?.waveformFile && context?.signals) {
+          const measurements = [];
+          if (lowerQuery.includes('setup')) measurements.push('setup');
+          if (lowerQuery.includes('hold')) measurements.push('hold');
+          if (lowerQuery.includes('frequency')) measurements.push('frequency');
+          if (lowerQuery.includes('propagation')) measurements.push('propagation');
+          
+          return await this.handleAnalyzeTiming({
+            waveformFile: context.waveformFile,
+            signals: context.signals,
+            measurements: measurements.length > 0 ? measurements : ['setup', 'hold'],
+          });
+        }
+      }
+
+      if (lowerQuery.includes('screenshot') || lowerQuery.includes('capture')) {
+        // Handle screenshot queries
+        const fileMatch = query.match(/(?:of|from)\s+['""]?([^'""\s]+\.(?:vcd|fst|lxt2))['""]?/i);
+        if (fileMatch) {
+          return await this.handleCaptureScreenshot({
+            waveformFile: fileMatch[1],
+            outputFile: fileMatch[1].replace(/\.\w+$/, '.png'),
+            format: 'png',
+          });
+        }
+      }
+
+      // Provide helpful guidance
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `I understand you want to: "${query}"
+
+Here are some examples of natural language queries I can help with:
+- "Open simulation.vcd in background"
+- "Convert design.vcd to fst with compression"
+- "List all clock signals from test.vcd"
+- "Extract signals matching 'data*' from sim.fst"
+- "Measure setup and hold times for clk and data signals"
+- "Capture screenshot of waveform.vcd"
+
+You can also use the specific tools:
+- gtkwave_open: Open waveform files
+- gtkwave_convert: Convert between formats
+- gtkwave_extract_signals: List signals
+- gtkwave_analyze_timing: Timing analysis
+- gtkwave_capture_screenshot: Take screenshots`,
+          },
+        ],
+      };
+    } catch (error) {
+      this.error(ErrorCode.InternalError, `Natural language processing failed: ${error}`);
+    }
   }
 
   async run(): Promise<void> {

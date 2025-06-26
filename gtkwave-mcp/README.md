@@ -10,6 +10,8 @@ A Model Context Protocol (MCP) server for GTKWave, providing programmatic access
 - **Timing Analysis**: Perform timing measurements and analysis
 - **Scripting**: Generate TCL scripts for automated analysis
 - **Screenshot Capture**: Capture waveform displays programmatically
+- **Natural Language Support**: Process natural language queries for common tasks
+- **MCP Resources**: Access documentation and reference materials
 
 ## Installation
 
@@ -146,6 +148,32 @@ Capture screenshot of waveform display.
 }
 ```
 
+#### gtkwave_natural_language
+Process natural language queries about waveform analysis.
+
+```typescript
+{
+  "query": "Convert simulation.vcd to fst with compression",
+  "context": {  // optional
+    "waveformFile": "/current/file.vcd",
+    "signals": ["clk", "data", "valid"]
+  }
+}
+```
+
+### Available Resources
+
+The server provides the following MCP resources:
+
+#### gtkwave://formats
+Information about supported waveform formats (VCD, FST, LXT2).
+
+#### gtkwave://tcl-commands
+Reference guide for GTKWave TCL commands used in automation.
+
+#### gtkwave://timing-measurements
+Available timing measurement types and their requirements.
+
 ## Examples
 
 ### Basic Waveform Viewing
@@ -187,6 +215,40 @@ await callTool('gtkwave_generate_script', {
   ],
   outputFile: 'analysis.tcl'
 });
+```
+
+### Natural Language Queries
+```javascript
+// Convert formats
+await callTool('gtkwave_natural_language', {
+  query: 'Convert design.vcd to fst with compression'
+});
+
+// Extract signals
+await callTool('gtkwave_natural_language', {
+  query: 'List all clock signals from simulation.vcd'
+});
+
+// Analyze timing
+await callTool('gtkwave_natural_language', {
+  query: 'Measure setup and hold times',
+  context: {
+    waveformFile: 'test.vcd',
+    signals: ['clk', 'data']
+  }
+});
+```
+
+### Access Resources
+```javascript
+// Get format information
+const formats = await readResource('gtkwave://formats');
+
+// Get TCL command reference
+const tclCommands = await readResource('gtkwave://tcl-commands');
+
+// Get timing measurement info
+const timingInfo = await readResource('gtkwave://timing-measurements');
 ```
 
 ## Development
