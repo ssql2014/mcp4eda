@@ -2,7 +2,7 @@
 
 A comprehensive collection of Model Context Protocol (MCP) servers designed to enhance EDA workflows in Claude Desktop and other MCP-compatible clients.
 
-## 🚀 Available MCP Servers (7 Total)
+## 🚀 Available MCP Servers (8 Total)
 
 ### 1. Yosys MCP Server
 **Purpose:** Synthesis and design optimization for digital circuits  
@@ -144,6 +144,46 @@ A comprehensive collection of Model Context Protocol (MCP) servers designed to e
 
 [Full Documentation →](./semiconductor-supply-chain-mcp/README.md)
 
+### 8. OpenLane MCP Server
+**Purpose:** Complete RTL to GDSII flow automation  
+**Location:** `openlane-mcp/`
+
+**Features:**
+- Complete RTL to GDSII flow using OpenLane
+- Container-based execution (Docker/Podman)
+- Individual stage control (synthesis, placement, routing)
+- PDK management and configuration
+- Natural language interface for complex flows
+
+**Tools:**
+- `openlane_run_flow` - Complete RTL to GDSII flow
+- `openlane_run_synthesis` - Logic synthesis
+- `openlane_run_floorplan` - Floorplanning and I/O placement
+- `openlane_run_placement` - Standard cell placement
+- `openlane_run_cts` - Clock tree synthesis
+- `openlane_run_routing` - Global and detailed routing
+- `openlane_natural_language` - Natural language interface
+
+[Full Documentation →](./openlane-mcp/README.md)
+
+## 🌟 Natural Language Support
+
+All 8 MCP servers now include comprehensive **natural language interfaces**, allowing you to interact with EDA tools using plain English commands:
+
+```
+"Synthesize my design for Xilinx FPGA"
+"Run simulation for 1 microsecond" 
+"Check my Verilog for errors"
+"Generate testbench for my CPU module"
+"Show waveform of clock signals"
+"Convert layout to OASIS format"
+"Calculate dies per wafer for 10x10mm chip"
+"Find DDR5 IP vendors"
+"Run complete RTL to GDSII flow"
+```
+
+See [Natural Language Support Guide](./NATURAL_LANGUAGE_SUPPORT.md) for comprehensive examples and patterns.
+
 ## 📋 Prerequisites
 
 - **Node.js 18+** and npm
@@ -166,7 +206,7 @@ cd mcp4eda
 ### 2. Install All Servers
 ```bash
 # Install script for all servers
-for dir in yosys-mcp verilator-mcp verible-mcp gtkwave-mcp klayout-mcp anysilicon semiconductor-supply-chain-mcp; do
+for dir in yosys-mcp verilator-mcp verible-mcp gtkwave-mcp klayout-mcp anysilicon semiconductor-supply-chain-mcp openlane-mcp; do
   echo "Installing $dir..."
   cd $dir && npm install && npm run build && cd ..
 done
@@ -230,6 +270,16 @@ Example configuration for all servers:
     "semiconductor-supply-chain": {
       "command": "node",
       "args": ["/path/to/mcp4eda/semiconductor-supply-chain-mcp/dist/index.js"]
+    },
+    "openlane": {
+      "command": "node",
+      "args": ["/path/to/mcp4eda/openlane-mcp/dist/index.js"],
+      "env": {
+        "CONTAINER_EXECUTABLE": "docker",
+        "OPENLANE_IMAGE": "efabless/openlane:latest",
+        "WORK_DIR": "/path/to/openlane-workspace",
+        "LOG_LEVEL": "info"
+      }
     }
   }
 }
