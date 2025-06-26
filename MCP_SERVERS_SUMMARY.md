@@ -85,7 +85,31 @@
 }
 ```
 
-### 5. Other Installed Servers
+### 5. KLayout MCP Server
+**Purpose:** IC layout viewing, editing, and analysis  
+**Repository:** https://github.com/mcp4eda/mcp4eda (klayout-mcp/)  
+**Status:** ✅ Installed and Working
+
+**Available Tools:**
+- `klayout_layout_info` - Get detailed information about layout files (cells, layers, bounding boxes)
+- `klayout_convert_layout` - Convert between layout formats (GDS, OASIS, DXF, CIF, MAG, DEF/LEF)
+- `klayout_run_drc` - Execute design rule checks with KLayout's DRC engine
+- `klayout_extract_layers` - Extract specific layers from layouts
+- `klayout_execute_script` - Run custom Python/Ruby scripts within KLayout environment
+
+**Configuration:**
+```json
+"klayout": {
+  "command": "node",
+  "args": ["/Users/qlss/Documents/mcp4eda/klayout-mcp/dist/index.js"],
+  "env": {
+    "KLAYOUT_PATH": "/usr/local/bin/klayout",
+    "LOG_LEVEL": "info"
+  }
+}
+```
+
+### 6. Other Installed Servers
 - **anysilicon** - Semiconductor calculations
 - **semiconductor-supply-chain** - Supply chain information
 - **zen** - AI reasoning and analysis
@@ -199,10 +223,58 @@
 }
 ```
 
+### KLayout Layout Analysis
+```javascript
+// 1. Get layout information
+{
+  "tool": "klayout_layout_info",
+  "arguments": {
+    "layoutFile": "design.gds",
+    "topCell": "TOP",
+    "includeHierarchy": true
+  }
+}
+
+// 2. Convert GDS to OASIS
+{
+  "tool": "klayout_convert_layout",
+  "arguments": {
+    "inputFile": "design.gds",
+    "outputFile": "design.oas",
+    "scale": 0.001,
+    "mergeReferences": false
+  }
+}
+
+// 3. Run DRC checks
+{
+  "tool": "klayout_run_drc",
+  "arguments": {
+    "layoutFile": "design.gds",
+    "drcFile": "rules.drc",
+    "outputFile": "violations.rdb",
+    "topCell": "TOP",
+    "verbose": true
+  }
+}
+
+// 4. Extract specific layers
+{
+  "tool": "klayout_extract_layers",
+  "arguments": {
+    "inputFile": "full_design.gds",
+    "outputFile": "metal_layers.gds",
+    "layers": ["31/0", "32/0", "33/0"],
+    "mergeShapes": true
+  }
+}
+```
+
 ## 🔧 Requirements Met
 - ✅ Yosys 0.54+ installed at `/opt/homebrew/bin/yosys`
 - ✅ Verilator 5.036+ installed at `/opt/homebrew/bin/verilator`
 - ✅ GTKWave 3.3+ installed (with vcd2fst, fst2vcd utilities)
+- ✅ KLayout 0.28+ installed at `/usr/local/bin/klayout`
 - ✅ Node.js 16+ available
 - ✅ All dependencies installed
 - ✅ All servers built and tested
