@@ -65,4 +65,4 @@ verible-*
 calculate_die_count.js
 .DS_Store
 *.db
-.rtl-parser-cache.db
+.rtl-parser-cache.dbmcp-eda-hub/

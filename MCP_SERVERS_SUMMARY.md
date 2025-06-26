@@ -109,11 +109,47 @@
 }
 ```
 
-### 6. Other Installed Servers
-- **anysilicon** - Semiconductor calculations
-- **semiconductor-supply-chain** - Supply chain information
-- **zen** - AI reasoning and analysis
-- **puppeteer** - Web automation
+### 6. AnySilicon MCP Server
+**Purpose:** Semiconductor manufacturing calculations  
+**Repository:** https://github.com/ssql2014/mcp4eda (anysilicon/)  
+**Status:** ✅ Installed and Working
+
+**Available Tools:**
+- `calculate_die_per_wafer` - Calculate die yield with edge exclusion
+- `validate_parameters` - Validate calculation parameters
+- `get_standard_wafer_sizes` - Get standard wafer dimensions
+
+**Configuration:**
+```json
+"anysilicon": {
+  "command": "node",
+  "args": ["/path/to/mcp4eda/anysilicon/dist/index.js"]
+}
+```
+
+### 7. Semiconductor Supply Chain MCP
+**Purpose:** IP core and ASIC service procurement  
+**Repository:** https://github.com/ssql2014/mcp4eda (semiconductor-supply-chain-mcp/)  
+**Status:** ✅ Installed and Working
+
+**Available Tools:**
+- `find_ip_vendors` - Search for IP core vendors by category
+- `find_asic_services` - Locate ASIC design and manufacturing services
+- `get_price_estimation` - Estimate semiconductor service costs
+- `compare_vendors` - Compare multiple vendors
+- `natural_language_query` - Natural language search interface
+
+**Configuration:**
+```json
+"semiconductor-supply-chain": {
+  "command": "node",
+  "args": ["/path/to/mcp4eda/semiconductor-supply-chain-mcp/dist/index.js"]
+}
+```
+
+### Other Available Servers (Not EDA-specific)
+- **zen** - AI reasoning and analysis (installed separately)
+- **puppeteer** - Web automation (installed separately)
 
 ## 🚀 Usage Examples
 

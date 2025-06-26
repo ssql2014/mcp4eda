@@ -1,0 +1,42 @@
+{
+  "name": "Verilator MCP",
+  "description": "Intelligent RTL simulation server with automatic testbench generation and natural language queries",
+  "repository": "https://github.com/ssql2014/verilator-mcp",
+  "category": "Simulation",
+  "features": [
+    "Automatic testbench generation when none exists",
+    "Natural language debugging queries",
+    "Waveform generation and analysis",
+    "Coverage collection and reporting",
+    "Protocol-aware testbench templates (AXI, APB, etc.)",
+    "Smart compilation with dependency management"
+  ],
+  "tools": [
+    {
+      "name": "verilator_compile",
+      "description": "Compile Verilog/SystemVerilog designs"
+    },
+    {
+      "name": "verilator_simulate", 
+      "description": "Run simulations with auto testbench generation"
+    },
+    {
+      "name": "verilator_testbenchgenerator",
+      "description": "Generate intelligent testbenches"
+    },
+    {
+      "name": "verilator_naturallanguage",
+      "description": "Process natural language queries"
+    }
+  ],
+  "examples": [
+    "Run simulation on counter.v",
+    "Why is data_valid low at 1000ns?",
+    "Generate an AXI testbench for my memory controller",
+    "Show me the coverage report"
+  ],
+  "installation": {
+    "prerequisites": ["Node.js 16+", "Verilator 5.0+"],
+    "command": "git clone https://github.com/ssql2014/verilator-mcp.git && cd verilator-mcp && npm install && npm run build"
+  }
+}

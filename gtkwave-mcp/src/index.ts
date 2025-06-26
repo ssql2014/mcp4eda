@@ -443,7 +443,7 @@ class GTKWaveServer {
           
         default:
           throw new McpError(
-            ErrorCode.ResourceNotFound,
+            ErrorCode.MethodNotFound,
             `Unknown resource: ${uri}`
           );
       }
@@ -454,7 +454,7 @@ class GTKWaveServer {
     const { waveformFile, saveFile, startTime, endTime, background } = args;
 
     try {
-      const gtkwaveArgs = [...this.config.defaultOptions];
+      const gtkwaveArgs = [...(this.config.defaultOptions || [])];
       
       if (saveFile) {
         gtkwaveArgs.push('-a', saveFile);
@@ -470,7 +470,7 @@ class GTKWaveServer {
       
       gtkwaveArgs.push(waveformFile);
 
-      const gtkwave = spawn(this.config.gtkwaveExecutable, gtkwaveArgs, {
+      const gtkwave = spawn(this.config.gtkwaveExecutable!, gtkwaveArgs, {
         detached: background,
         stdio: background ? 'ignore' : 'inherit',
       });
@@ -543,39 +543,78 @@ class GTKWaveServer {
     const { waveformFile, hierarchical, pattern } = args;
 
     try {
-      const { stdout } = await this.executeCommand('gtkwave', [
-        '-f', waveformFile,
-        '-L', // List signals
-      ]);
+      // For VCD files, parse directly
+      if (waveformFile.endsWith('.vcd')) {
+        const vcdContent = await fs.readFile(waveformFile, 'utf-8');
+        const signals = this.parseVCDSignals(vcdContent);
+        
+        let filteredSignals = signals;
+        if (pattern) {
+          const regex = new RegExp(pattern);
+          filteredSignals = signals.filter(s => regex.test(s));
+        }
 
-      let signals = stdout.split('\n').filter(s => s.trim());
-      
-      if (pattern) {
-        const regex = new RegExp(pattern);
-        signals = signals.filter(s => regex.test(s));
+        const result = hierarchical ? this.buildHierarchy(filteredSignals) : filteredSignals;
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      } else {
+        // For other formats, try using GTKWave's conversion tools
+        throw new Error('Non-VCD format support not yet implemented');
       }
-
-      const result = hierarchical ? this.buildHierarchy(signals) : signals;
-
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
     } catch (error) {
       this.error(ErrorCode.InternalError, `Failed to extract signals: ${error}`);
     }
+  }
+
+  private parseVCDSignals(vcdContent: string): string[] {
+    const signals: string[] = [];
+    const lines = vcdContent.split('\n');
+    let currentScope: string[] = [];
+    let inDefinitions = false;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      if (trimmed === '$enddefinitions $end') {
+        break;
+      }
+      
+      if (trimmed.startsWith('$scope')) {
+        const parts = trimmed.split(' ');
+        if (parts.length >= 3) {
+          currentScope.push(parts[2]);
+        }
+      } else if (trimmed === '$upscope $end') {
+        currentScope.pop();
+      } else if (trimmed.startsWith('$var')) {
+        const parts = trimmed.split(' ');
+        if (parts.length >= 4) {
+          const signalName = parts[3];
+          const fullPath = currentScope.length > 0 
+            ? `${currentScope.join('.')}.${signalName}`
+            : signalName;
+          signals.push(fullPath);
+        }
+      }
+    }
+
+    return signals;
   }
 
   private async handleAnalyzeTiming(args: any): Promise<CallToolResult> {
     const { waveformFile, signals, startTime, endTime, measurements } = args;
 
     try {
-      const scriptFile = path.join(this.config.tempDir, `timing_${Date.now()}.tcl`);
-      await fs.mkdir(this.config.tempDir, { recursive: true });
+      const tempDir = this.config.tempDir!;
+      const scriptFile = path.join(tempDir, `timing_${Date.now()}.tcl`);
+      await fs.mkdir(tempDir, { recursive: true });
 
       const script = this.generateTimingScript(signals, startTime, endTime, measurements);
       await fs.writeFile(scriptFile, script);
@@ -624,8 +663,9 @@ class GTKWaveServer {
     const { waveformFile, saveFile, outputFile, format, width, height } = args;
 
     try {
-      const scriptFile = path.join(this.config.tempDir, `screenshot_${Date.now()}.tcl`);
-      await fs.mkdir(this.config.tempDir, { recursive: true });
+      const tempDir = this.config.tempDir!;
+      const scriptFile = path.join(tempDir, `screenshot_${Date.now()}.tcl`);
+      await fs.mkdir(tempDir, { recursive: true });
 
       const script = `
 gtkwave::loadFile "${waveformFile}"
@@ -636,7 +676,7 @@ exit
 `;
       await fs.writeFile(scriptFile, script);
 
-      await this.executeCommand(this.config.gtkwaveExecutable, [
+      await this.executeCommand(this.config.gtkwaveExecutable!, [
         '-S', scriptFile,
         waveformFile,
       ]);
