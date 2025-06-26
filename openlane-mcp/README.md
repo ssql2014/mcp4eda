@@ -75,6 +75,8 @@ Add to your Claude Desktop configuration:
 "What's the best practice for clock tree synthesis?"
 ```
 
+See [Natural Language Examples](examples/natural_language_examples.md) for comprehensive usage patterns and examples.
+
 ### Tool Examples
 
 #### Complete Flow

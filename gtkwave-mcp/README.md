@@ -239,6 +239,8 @@ await callTool('gtkwave_natural_language', {
 });
 ```
 
+See [Natural Language Examples](examples/natural_language_examples.md) for comprehensive usage patterns.
+
 ### Access Resources
 ```javascript
 // Get format information

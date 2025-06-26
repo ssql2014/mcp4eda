@@ -4,6 +4,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
   McpError,
   ErrorCode,
 } from '@modelcontextprotocol/sdk/types.js';
@@ -17,6 +19,7 @@ import { mcpLogger } from './utils/logger.js';
 import { SynthTool } from './tools/synth.js';
 import { AnalyzeTool } from './tools/analyze.js';
 import { ShowTool } from './tools/show.js';
+import { NaturalLanguageTool } from './tools/natural-language.js';
 // TODO: Import other tools as they are implemented
 // import { QueryTool } from './tools/query.js';
 // import { ProjectTool } from './tools/project.js';
@@ -61,6 +64,7 @@ class YosysMCPServer {
     this.tools.set('yosys_synth', new SynthTool(this.configManager, this.cacheManager));
     this.tools.set('yosys_analyze', new AnalyzeTool(this.configManager, this.cacheManager));
     this.tools.set('yosys_show', new ShowTool(this.configManager, this.cacheManager));
+    this.tools.set('yosys_natural_language', new NaturalLanguageTool(this.configManager, this.cacheManager));
     
     // TODO: Add other tools as they are implemented
     // this.tools.set('yosys_query', new QueryTool(this.configManager, this.cacheManager));
@@ -113,6 +117,179 @@ class YosysMCPServer {
         const mcpError = ErrorHandler.toMcpError(error);
         throw mcpError;
       }
+    });
+
+    // List resources handler
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
+      return {
+        resources: [
+          {
+            uri: 'yosys://examples/counter.v',
+            name: 'Counter Example',
+            description: 'Simple counter design in Verilog',
+            mimeType: 'text/x-verilog'
+          },
+          {
+            uri: 'yosys://examples/adder.v',
+            name: 'Adder Example',
+            description: '4-bit adder design',
+            mimeType: 'text/x-verilog'
+          },
+          {
+            uri: 'yosys://scripts/basic_synth.ys',
+            name: 'Basic Synthesis Script',
+            description: 'Basic Yosys synthesis flow',
+            mimeType: 'text/plain'
+          },
+          {
+            uri: 'yosys://scripts/fpga_synth.ys',
+            name: 'FPGA Synthesis Script',
+            description: 'FPGA-optimized synthesis flow',
+            mimeType: 'text/plain'
+          },
+          {
+            uri: 'yosys://docs/synthesis_tips.md',
+            name: 'Synthesis Tips',
+            description: 'Best practices for synthesis',
+            mimeType: 'text/markdown'
+          }
+        ]
+      };
+    });
+
+    // Read resource handler
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      const { uri } = request.params;
+      
+      // Simple resource content based on URI
+      const resources: Record<string, { text: string, mimeType: string }> = {
+        'yosys://examples/counter.v': {
+          text: `module counter (
+    input clk,
+    input reset,
+    output reg [3:0] count
+);
+
+always @(posedge clk or posedge reset) begin
+    if (reset)
+        count <= 4'b0000;
+    else
+        count <= count + 1;
+end
+
+endmodule`,
+          mimeType: 'text/x-verilog'
+        },
+        'yosys://examples/adder.v': {
+          text: `module adder4bit (
+    input [3:0] a,
+    input [3:0] b,
+    input cin,
+    output [3:0] sum,
+    output cout
+);
+
+assign {cout, sum} = a + b + cin;
+
+endmodule`,
+          mimeType: 'text/x-verilog'
+        },
+        'yosys://scripts/basic_synth.ys': {
+          text: `# Basic Yosys synthesis script
+read_verilog design.v
+hierarchy -check -top top_module
+proc
+opt
+memory
+opt
+techmap
+opt
+write_verilog synth_output.v`,
+          mimeType: 'text/plain'
+        },
+        'yosys://scripts/fpga_synth.ys': {
+          text: `# FPGA synthesis script
+read_verilog design.v
+hierarchy -check -top top_module
+proc
+flatten
+tribuf -logic
+deminout
+opt
+memory -nomap
+opt_clean
+check
+opt -fast
+fsm
+opt -fast
+memory_map
+opt -full
+techmap -map +/techmap.v
+opt -fast
+abc -fast
+opt -fast
+hierarchy -check
+stat
+write_verilog -noattr synth_output.v`,
+          mimeType: 'text/plain'
+        },
+        'yosys://docs/synthesis_tips.md': {
+          text: `# Yosys Synthesis Tips
+
+## Optimization Levels
+
+- **Level 0**: No optimization (debugging)
+- **Level 1**: Basic optimization (fast)
+- **Level 2**: Standard optimization (balanced)
+- **Level 3**: Aggressive optimization (slow but thorough)
+
+## Target-Specific Tips
+
+### Xilinx FPGAs
+- Use \`synth_xilinx\` for best results
+- Enable DSP inference with \`-dsp\`
+- Use \`-nodsp\` to disable DSP inference
+
+### Intel/Altera FPGAs
+- Use \`synth_intel\` or \`synth_altera\`
+- Enable RAM inference with appropriate settings
+
+### Lattice FPGAs
+- Use \`synth_ice40\` for iCE40 series
+- Use \`synth_ecp5\` for ECP5 series
+
+## Common Optimizations
+
+1. **Area optimization**: Use \`opt -full\` repeatedly
+2. **Speed optimization**: Use \`abc -fast\` with timing constraints
+3. **Power optimization**: Minimize switching activity
+
+## Best Practices
+
+- Always run \`check\` after major transformations
+- Use \`stat\` to monitor resource usage
+- Save intermediate results for debugging`,
+          mimeType: 'text/markdown'
+        }
+      };
+
+      const resource = resources[uri];
+      if (!resource) {
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          `Resource not found: ${uri}`
+        );
+      }
+
+      return {
+        contents: [
+          {
+            uri,
+            mimeType: resource.mimeType,
+            text: resource.text
+          }
+        ]
+      };
     });
 
     // Error handler

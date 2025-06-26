@@ -15,6 +15,7 @@ import { calculateDiePerWafer, cleanup } from './calculations/diePerWafer.js';
 import { STANDARD_WAFER_SIZES } from './config/defaults.js';
 import { validateDiePerWaferParams, isDiePerWaferParams } from './utils/validation.js';
 import { AnySiliconError } from './errors/index.js';
+import { NaturalLanguageTool } from './tools/natural-language.js';
 import type {
   DiePerWaferParams,
   StandardWaferInfo,
@@ -80,7 +81,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-
+      case 'anysilicon_natural_language': {
+        const nlTool = new NaturalLanguageTool();
+        const result = await nlTool.execute(args as any);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
 
       default:
         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
@@ -158,6 +170,35 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object',
           properties: {},
+        },
+      },
+      {
+        name: 'anysilicon_natural_language',
+        description: 'Process natural language queries about die calculations and wafer yield',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            query: {
+              type: 'string',
+              description: 'Natural language query about die calculations',
+            },
+            context: {
+              type: 'object',
+              description: 'Optional context including previous calculation',
+              properties: {
+                previousCalculation: {
+                  type: 'object',
+                  properties: {
+                    waferDiameter: { type: 'number' },
+                    dieWidth: { type: 'number' },
+                    dieHeight: { type: 'number' },
+                    result: { type: 'object' }
+                  }
+                }
+              }
+            }
+          },
+          required: ['query'],
         },
       },
     ],

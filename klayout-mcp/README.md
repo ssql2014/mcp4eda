@@ -291,6 +291,8 @@ Example queries:
 - "Extract metal layers 31, 32, 33 from the design"
 - "Calculate layer density for my chip"
 
+See [Natural Language Examples](examples/natural_language_examples.md) for comprehensive usage patterns.
+
 ## Development
 
 ```bash

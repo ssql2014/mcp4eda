@@ -7,6 +7,8 @@ A Model Context Protocol (MCP) server that provides Yosys synthesis and analysis
 - **Synthesis**: Convert RTL to gate-level netlists for various targets (FPGA/ASIC)
 - **Analysis**: Design statistics, hierarchy analysis, and resource estimation  
 - **Visualization**: Generate circuit diagrams using Graphviz
+- **Natural Language**: Process synthesis commands in plain English
+- **Resources**: Built-in examples, scripts, and documentation
 - **Caching**: Intelligent result caching for improved performance
 - **Multi-target**: Support for Xilinx, Intel/Altera, Lattice iCE40, ECP5, and generic synthesis
 
@@ -134,6 +136,43 @@ Generate visual representations of designs using Graphviz.
   "moduleName": "alu",
   "simplify": true
 }
+```
+
+### yosys_natural_language
+Process natural language queries about synthesis operations.
+
+**Parameters:**
+- `query` (string, required): Natural language query about synthesis
+- `context` (object): Optional context including current file and recent operations
+
+**Example:**
+```javascript
+{
+  "query": "Synthesize my design for Xilinx FPGA with aggressive optimization",
+  "context": {
+    "currentFile": "cpu.v"
+  }
+}
+```
+
+See [Natural Language Examples](examples/natural_language_examples.md) for detailed usage.
+
+## Resources
+
+The Yosys MCP server provides built-in resources including:
+
+- **Examples**: Counter and adder Verilog designs
+- **Scripts**: Basic and FPGA-optimized synthesis scripts
+- **Documentation**: Synthesis tips and best practices
+
+List resources:
+```
+List available Yosys resources
+```
+
+Read a resource:
+```
+Show me the counter example
 ```
 
 ## Usage Examples

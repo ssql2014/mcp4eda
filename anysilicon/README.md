@@ -5,9 +5,11 @@ An MCP (Model Context Protocol) server for semiconductor die per wafer calculati
 ## Features
 
 - **Die Per Wafer Calculation**: Calculate how many dies fit on a wafer using the AnySilicon online calculator
+- **Natural Language Interface**: Use plain English to perform die calculations
 - **Web Scraping Integration**: Uses Puppeteer to interact with the AnySilicon webpage automatically
 - **Parameter Validation**: Pre-validate parameters with helpful warnings and suggestions  
 - **Standard Wafer Information**: Access standard wafer sizes and their typical applications
+- **Built-in Resources**: Access wafer standards, defect density data, and calculation formulas
 
 ## Implementation Note
 
@@ -195,6 +197,45 @@ Get information about standard wafer sizes.
   ]
 }
 ```
+
+### 4. anysilicon_natural_language
+Process natural language queries about die calculations.
+
+```typescript
+// Example request
+{
+  "query": "Calculate dies for 10x10mm chip on 300mm wafer",
+  "context": {
+    "previousCalculation": {
+      "waferDiameter": 200,
+      "dieWidth": 5,
+      "dieHeight": 5
+    }
+  }
+}
+
+// Response
+{
+  "interpretation": "You want to calculate dies per wafer",
+  "suggestedTool": "calculate_die_per_wafer",
+  "suggestedArguments": {
+    "wafer_diameter": 300,
+    "die_width": 10,
+    "die_height": 10,
+    "edge_exclusion": 3,
+    "scribe_lane": 0.1
+  },
+  "explanation": "I'll calculate how many 10x10mm dies fit on a 300mm wafer",
+  "hints": [
+    "Using edge exclusion of 3mm",
+    "Using scribe lane width of 0.1mm",
+    "You can specify different wafer sizes: 150mm, 200mm, 300mm, or 450mm",
+    "You can adjust edge exclusion and scribe lane parameters"
+  ]
+}
+```
+
+See [Natural Language Examples](examples/natural_language_examples.md) for more usage patterns.
 
 ## Available Resources
 
