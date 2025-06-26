@@ -147,6 +147,36 @@
 }
 ```
 
+### 8. OpenLane MCP Server
+**Purpose:** Complete RTL to GDSII flow automation  
+**Repository:** https://github.com/ssql2014/mcp4eda (openlane-mcp/)  
+**Status:** ✅ Built and Ready
+
+**Available Tools:**
+- `openlane_run_flow` - Complete RTL to GDSII flow
+- `openlane_run_synthesis` - Logic synthesis with Yosys
+- `openlane_run_floorplan` - Floorplanning and I/O placement
+- `openlane_run_placement` - Standard cell placement
+- `openlane_run_cts` - Clock tree synthesis
+- `openlane_run_routing` - Global and detailed routing
+- `openlane_generate_reports` - Generate flow reports and statistics
+- `openlane_check_design` - Validate design configuration
+- `openlane_natural_language` - Natural language interface
+
+**Configuration:**
+```json
+"openlane": {
+  "command": "node",
+  "args": ["/path/to/mcp4eda/openlane-mcp/dist/index.js"],
+  "env": {
+    "CONTAINER_EXECUTABLE": "docker",
+    "OPENLANE_IMAGE": "efabless/openlane:latest",
+    "WORK_DIR": "/home/user/openlane-workspace",
+    "LOG_LEVEL": "info"
+  }
+}
+```
+
 ### Other Available Servers (Not EDA-specific)
 - **zen** - AI reasoning and analysis (installed separately)
 - **puppeteer** - Web automation (installed separately)
@@ -306,11 +336,53 @@
 }
 ```
 
+### OpenLane RTL to GDSII Flow
+```javascript
+// 1. Run complete flow
+{
+  "tool": "openlane_run_flow",
+  "arguments": {
+    "designName": "counter",
+    "designPath": "/path/to/counter",
+    "threads": 8
+  }
+}
+
+// 2. Run synthesis only
+{
+  "tool": "openlane_run_synthesis",
+  "arguments": {
+    "designName": "cpu_core",
+    "designPath": "/path/to/cpu",
+    "targetClock": 500,
+    "strategy": "AREA 0"
+  }
+}
+
+// 3. Natural language flow control
+{
+  "tool": "openlane_natural_language",
+  "arguments": {
+    "query": "Run floorplanning for my design with 65% utilization"
+  }
+}
+
+// 4. Check design configuration
+{
+  "tool": "openlane_check_design",
+  "arguments": {
+    "designName": "soc",
+    "designPath": "/path/to/soc"
+  }
+}
+```
+
 ## 🔧 Requirements Met
 - ✅ Yosys 0.54+ installed at `/opt/homebrew/bin/yosys`
 - ✅ Verilator 5.036+ installed at `/opt/homebrew/bin/verilator`
 - ✅ GTKWave 3.3+ installed (with vcd2fst, fst2vcd utilities)
 - ✅ KLayout 0.28+ installed at `/usr/local/bin/klayout`
+- ✅ Docker/Podman installed for OpenLane container support
 - ✅ Node.js 16+ available
 - ✅ All dependencies installed
 - ✅ All servers built and tested
