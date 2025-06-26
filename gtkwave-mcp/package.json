@@ -1,0 +1,32 @@
+{
+  "name": "@mcp4eda/gtkwave-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for GTKWave - waveform viewer and analyzer",
+  "keywords": ["mcp", "gtkwave", "waveform", "vcd", "fst", "simulation", "eda"],
+  "homepage": "https://www.mcp4eda.cn",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mcp4eda/mcp4eda.git",
+    "directory": "gtkwave-mcp"
+  },
+  "license": "MIT",
+  "author": "MCP4EDA Contributors",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

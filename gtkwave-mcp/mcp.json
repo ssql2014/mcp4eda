@@ -1,0 +1,47 @@
+{
+  "name": "gtkwave-mcp",
+  "version": "0.1.0",
+  "description": "GTKWave MCP server for waveform viewing and analysis",
+  "author": "MCP4EDA Contributors",
+  "license": "MIT",
+  "runtime": "node",
+  "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mcp4eda/mcp4eda.git"
+  },
+  "commands": {
+    "install": "npm install",
+    "build": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "categories": ["eda", "simulation", "waveform", "analysis"],
+  "keywords": ["gtkwave", "vcd", "fst", "waveform", "viewer", "mcp"],
+  "requirements": {
+    "gtkwave": ">=3.3.0"
+  },
+  "settings": {
+    "gtkwaveExecutable": {
+      "type": "string",
+      "description": "Path to GTKWave executable",
+      "default": "gtkwave"
+    },
+    "defaultOptions": {
+      "type": "array",
+      "description": "Default command line options for GTKWave",
+      "default": []
+    },
+    "enableBatchMode": {
+      "type": "boolean",
+      "description": "Enable batch processing mode",
+      "default": true
+    },
+    "tempDir": {
+      "type": "string",
+      "description": "Temporary directory for script files",
+      "default": null
+    }
+  }
+}
