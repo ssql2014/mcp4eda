@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTKWave MCP Server - Website Preview</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .language-switch {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+        .language-switch button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin-left: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .language-switch button.active {
+            background: #0056b3;
+        }
+        .server-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .server-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .server-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .server-card.highlight {
+            border: 2px solid #007bff;
+        }
+        .server-card h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .server-card .author {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .server-card .category {
+            display: inline-block;
+            background: #e9ecef;
+            color: #495057;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        .server-card .description {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+        .server-card .learn-more {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .server-card .learn-more:hover {
+            text-decoration: underline;
+        }
+        .detail-section {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .detail-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .tool-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #007bff;
+        }
+        .tool-item h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+            font-size: 16px;
+        }
+        .tool-item p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .code-example {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="language-switch">
+            <button onclick="switchLanguage('en')" id="en-btn" class="active">English</button>
+            <button onclick="switchLanguage('zh')" id="zh-btn">中文</button>
+        </div>
+
+        <h1 style="text-align: center; margin-bottom: 30px;">
+            <span class="en">GTKWave MCP Server Preview</span>
+            <span class="zh hidden">GTKWave MCP 服务器预览</span>
+        </h1>
+
+        <!-- Server Card Grid Preview -->
+        <h2>
+            <span class="en">Homepage Card Preview</span>
+            <span class="zh hidden">主页卡片预览</span>
+        </h2>
+        <div class="server-grid">
+            <!-- Existing servers -->
+            <div class="server-card">
+                <h3>AnySilicon Die Calculator</h3>
+                <p class="author">作者 AnySilicon</p>
+                <span class="category">Manufacturing</span>
+                <p class="description">Calculate die per wafer and other semiconductor metrics</p>
+                <a href="#" class="learn-more">Learn More →</a>
+            </div>
+
+            <div class="server-card">
+                <h3>Verible MCP Server</h3>
+                <p class="author">作者 mcp4eda</p>
+                <span class="category">Design Entry</span>
+                <p class="description">Verilog/SystemVerilog linting, formatting, and analysis</p>
+                <a href="#" class="learn-more">Learn More →</a>
+            </div>
+
+            <!-- New GTKWave Card -->
+            <div class="server-card highlight">
+                <h3>
+                    <span class="en">GTKWave MCP Server</span>
+                    <span class="zh hidden">GTKWave MCP 服务器</span>
+                </h3>
+                <p class="author">
+                    <span class="en">by mcp4eda</span>
+                    <span class="zh hidden">作者 mcp4eda</span>
+                </p>
+                <span class="category">
+                    <span class="en">Simulation Visualization</span>
+                    <span class="zh hidden">仿真可视化</span>
+                </span>
+                <p class="description">
+                    <span class="en">Waveform viewing and analysis for simulation results</span>
+                    <span class="zh hidden">用于仿真结果的波形查看和分析</span>
+                </p>
+                <a href="#detail" class="learn-more">
+                    <span class="en">Learn More →</span>
+                    <span class="zh hidden">了解更多 →</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Detailed Page Preview -->
+        <div id="detail">
+            <h2>
+                <span class="en">Server Detail Page Preview</span>
+                <span class="zh hidden">服务器详情页预览</span>
+            </h2>
+
+            <div class="detail-section">
+                <h2>
+                    <span class="en">GTKWave MCP Server</span>
+                    <span class="zh hidden">GTKWave MCP 服务器</span>
+                </h2>
+                <p>
+                    <span class="en">GTKWave MCP Server provides programmatic access to GTKWave's powerful waveform viewing and analysis capabilities. It enables automated waveform analysis, format conversion, and visualization generation for EDA workflows.</span>
+                    <span class="zh hidden">GTKWave MCP 服务器提供对 GTKWave 强大的波形查看和分析功能的程序化访问。它支持自动化波形分析、格式转换和 EDA 工作流程的可视化生成。</span>
+                </p>
+
+                <h3>
+                    <span class="en">Available Tools</span>
+                    <span class="zh hidden">可用工具</span>
+                </h3>
+                <div class="tools-grid">
+                    <div class="tool-item">
+                        <h4>gtkwave_open</h4>
+                        <p>
+                            <span class="en">Open waveform files in GTKWave viewer</span>
+                            <span class="zh hidden">在 GTKWave 查看器中打开波形文件</span>
+                        </p>
+                    </div>
+                    <div class="tool-item">
+                        <h4>gtkwave_convert</h4>
+                        <p>
+                            <span class="en">Convert between waveform formats</span>
+                            <span class="zh hidden">在波形格式之间转换</span>
+                        </p>
+                    </div>
+                    <div class="tool-item">
+                        <h4>gtkwave_extract_signals</h4>
+                        <p>
+                            <span class="en">Extract signal hierarchies from waveforms</span>
+                            <span class="zh hidden">从波形中提取信号层次</span>
+                        </p>
+                    </div>
+                    <div class="tool-item">
+                        <h4>gtkwave_analyze_timing</h4>
+                        <p>
+                            <span class="en">Perform timing measurements and analysis</span>
+                            <span class="zh hidden">执行时序测量和分析</span>
+                        </p>
+                    </div>
+                    <div class="tool-item">
+                        <h4>gtkwave_generate_script</h4>
+                        <p>
+                            <span class="en">Generate TCL scripts for automation</span>
+                            <span class="zh hidden">生成用于自动化的 TCL 脚本</span>
+                        </p>
+                    </div>
+                    <div class="tool-item">
+                        <h4>gtkwave_capture_screenshot</h4>
+                        <p>
+                            <span class="en">Capture waveform display screenshots</span>
+                            <span class="zh hidden">捕获波形显示截图</span>
+                        </p>
+                    </div>
+                </div>
+
+                <h3>
+                    <span class="en">Example: Convert VCD to FST</span>
+                    <span class="zh hidden">示例：将 VCD 转换为 FST</span>
+                </h3>
+                <div class="code-example">
+{
+  "tool": "gtkwave_convert",
+  "arguments": {
+    "inputFile": "large_sim.vcd",
+    "outputFile": "compressed.fst",
+    "format": "fst",
+    "compress": true
+  }
+}
+                </div>
+
+                <h3>
+                    <span class="en">Installation</span>
+                    <span class="zh hidden">安装方法</span>
+                </h3>
+                <div class="code-example">
+git clone https://github.com/mcp4eda/mcp4eda.git
+cd mcp4eda/gtkwave-mcp
+npm install
+npm run build
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchLanguage(lang) {
+            // Update button states
+            document.getElementById('en-btn').classList.toggle('active', lang === 'en');
+            document.getElementById('zh-btn').classList.toggle('active', lang === 'zh');
+            
+            // Show/hide content based on language
+            document.querySelectorAll('.en').forEach(el => {
+                el.classList.toggle('hidden', lang !== 'en');
+            });
+            document.querySelectorAll('.zh').forEach(el => {
+                el.classList.toggle('hidden', lang !== 'zh');
+            });
+        }
+
+        // Smooth scroll to detail section
+        document.querySelector('.learn-more').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('detail').scrollIntoView({ behavior: 'smooth' });
+        });
+    </script>
+</body>
+</html>
