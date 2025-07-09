@@ -36,7 +36,15 @@ Generate test cases based on coverage criteria:
 - Path coverage
 
 ### cbmc_natural_language
-Process natural language queries about verification tasks.
+Process natural language queries about verification tasks and automatically invoke appropriate tools.
+
+Examples:
+- "verify test.c for array bounds violations"
+- "check if abs_v1.c and abs_v2.c are equivalent"
+- "show all assertions in my_code.c"
+- "generate branch coverage tests for sort.c"
+
+The tool interprets your query and automatically calls the appropriate CBMC tool.
 
 ## Installation
 
@@ -100,6 +108,45 @@ Add to your MCP settings:
     "cbmc": {
       "command": "python",
       "args": ["/path/to/cbmc-mcp/server.py"]
+    }
+  }
+}
+```
+
+### Natural Language Usage
+
+You can use natural language to invoke CBMC tools:
+
+```python
+# Example 1: Verification
+{
+  "tool": "cbmc_natural_language",
+  "arguments": {
+    "query": "verify the array access in my code",
+    "context": {
+      "files": ["array_code.c"]
+    }
+  }
+}
+
+# Example 2: Equivalence checking
+{
+  "tool": "cbmc_natural_language",
+  "arguments": {
+    "query": "check if these two sort functions are equivalent",
+    "context": {
+      "files": ["bubble_sort.c", "quick_sort.c"]
+    }
+  }
+}
+
+# Example 3: Test generation
+{
+  "tool": "cbmc_natural_language",
+  "arguments": {
+    "query": "generate tests with condition coverage for my parser",
+    "context": {
+      "files": ["parser.c"]
     }
   }
 }

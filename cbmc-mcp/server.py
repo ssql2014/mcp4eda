@@ -337,24 +337,105 @@ int main() {{
     elif name == "cbmc_natural_language":
         query = arguments["query"]
         context = arguments.get("context", {})
+        files = context.get("files", [])
         
-        # Process natural language queries
-        response = f"Processing query: {query}\n\n"
+        # Process natural language queries and invoke appropriate tools
+        query_lower = query.lower()
         
-        if "equivalence" in query.lower() or "compare" in query.lower():
-            response += "For equivalence checking, use the cbmc_equivalence tool with:\n"
-            response += "- file1: path to first C file\n"
-            response += "- file2: path to second C file\n"
-            response += "- function: name of function to compare\n"
-            response += "- inputs: list of input variables to make non-deterministic\n"
-        elif "verify" in query.lower() or "check" in query.lower():
-            response += "For verification, use the cbmc_verify tool with:\n"
-            response += "- file: path to C file\n"
-            response += "- property: type of property to check (assertions, bounds, etc.)\n"
-        elif "test" in query.lower() or "generate" in query.lower():
-            response += "For test generation, use the cbmc_generate_tests tool\n"
+        # Check for equivalence queries
+        if any(word in query_lower for word in ["equivalence", "equivalent", "compare", "same"]):
+            if len(files) >= 2:
+                # Extract function name from query if possible
+                import re
+                func_match = re.search(r'function\s+(\w+)|(\w+)\s+function', query_lower)
+                function_name = func_match.group(1) or func_match.group(2) if func_match else "main"
+                
+                # Call equivalence tool
+                result = await call_tool("cbmc_equivalence", {
+                    "file1": files[0],
+                    "file2": files[1],
+                    "function": function_name,
+                    "inputs": []
+                })
+                return result
+            else:
+                return [TextContent(
+                    type="text",
+                    text="For equivalence checking, please provide two C files in the context."
+                )]
         
-        return [TextContent(type="text", text=response)]
+        # Check for verification queries
+        elif any(word in query_lower for word in ["verify", "check", "assert", "bounds", "overflow"]):
+            if files:
+                # Determine property type from query
+                property_type = "all"
+                if "bounds" in query_lower or "array" in query_lower:
+                    property_type = "bounds"
+                elif "overflow" in query_lower:
+                    property_type = "overflow"
+                elif "pointer" in query_lower:
+                    property_type = "pointer"
+                elif "assert" in query_lower:
+                    property_type = "assertions"
+                
+                # Call verify tool
+                result = await call_tool("cbmc_verify", {
+                    "file": files[0],
+                    "property": property_type,
+                    "trace": True
+                })
+                return result
+            else:
+                return [TextContent(
+                    type="text",
+                    text="Please provide a C file in the context to verify."
+                )]
+        
+        # Check for property listing queries
+        elif any(word in query_lower for word in ["show", "list", "properties", "assertions"]):
+            if files:
+                result = await call_tool("cbmc_show_properties", {
+                    "file": files[0]
+                })
+                return result
+            else:
+                return [TextContent(
+                    type="text",
+                    text="Please provide a C file in the context to show properties."
+                )]
+        
+        # Check for test generation queries
+        elif any(word in query_lower for word in ["test", "generate", "coverage"]):
+            if files:
+                # Determine coverage type
+                coverage = "branch"
+                if "condition" in query_lower:
+                    coverage = "condition"
+                elif "path" in query_lower:
+                    coverage = "path"
+                
+                result = await call_tool("cbmc_generate_tests", {
+                    "file": files[0],
+                    "coverage": coverage
+                })
+                return result
+            else:
+                return [TextContent(
+                    type="text",
+                    text="Please provide a C file in the context to generate tests."
+                )]
+        
+        # Default response with guidance
+        else:
+            response = f"Query: {query}\n\n"
+            response += "I can help you with:\n"
+            response += "1. **Verification**: 'verify FILE for bounds/overflows/assertions'\n"
+            response += "2. **Equivalence**: 'check if FILE1 and FILE2 are equivalent'\n"
+            response += "3. **Properties**: 'show properties in FILE'\n"
+            response += "4. **Test Generation**: 'generate tests for FILE'\n\n"
+            response += "Please include file paths in the context."
+            
+            return [TextContent(type="text", text=response)]
     
     else:
         return [TextContent(
