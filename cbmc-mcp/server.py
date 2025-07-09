@@ -18,8 +18,9 @@ from typing import Any, Dict, List, Optional
 print("Starting CBMC MCP Server...", file=sys.stderr)
 
 try:
-    from mcp.server import Server
-    from mcp.types import Tool, TextContent, ImageContent, EmbeddedResource
+    from mcp.server import Server, NotificationOptions
+    from mcp.server.models import InitializationOptions
+    import mcp.types as types
     from mcp.server.stdio import stdio_server
 except ImportError as e:
     print(f"Error importing MCP modules: {e}", file=sys.stderr)
@@ -73,11 +74,11 @@ def run_cbmc_command(args: List[str], cwd: Optional[str] = None) -> Dict[str, An
         }
 
 @server.list_tools()
-async def list_tools() -> List[Tool]:
+async def list_tools() -> List[types.Tool]:
     """List available CBMC tools"""
     logger.info("Listing tools")
     return [
-        Tool(
+        types.Tool(
             name="cbmc_verify",
             description="Verify C/C++ code for assertions, bounds checking, and other properties",
             inputSchema={
@@ -111,7 +112,7 @@ async def list_tools() -> List[Tool]:
                 "required": ["file"]
             }
         ),
-        Tool(
+        types.Tool(
             name="cbmc_equivalence",
             description="Check equivalence between two C functions",
             inputSchema={
@@ -146,14 +147,14 @@ async def list_tools() -> List[Tool]:
     ]
 
 @server.call_tool()
-async def call_tool(name: str, arguments: Any) -> List[TextContent | ImageContent | EmbeddedResource]:
+async def call_tool(name: str, arguments: Any) -> List[types.TextContent | types.ImageContent | types.EmbeddedResource]:
     """Execute CBMC tools"""
     logger.info(f"Calling tool: {name} with arguments: {arguments}")
     
     if name == "cbmc_verify":
         file_path = arguments.get("file")
         if not file_path:
-            return [TextContent(type="text", text="Error: 'file' parameter is required")]
+            return [types.TextContent(type="text", text="Error: 'file' parameter is required")]
             
         function = arguments.get("function", "main")
         unwind = arguments.get("unwind", 10)
@@ -180,7 +181,7 @@ async def call_tool(name: str, arguments: Any) -> List[TextContent | ImageConten
         
         result = run_cbmc_command(args)
         
-        return [TextContent(
+        return [types.TextContent(
             type="text",
             text=f"CBMC Verification Results:\n\n"
                  f"Command: {result.get('command', 'N/A')}\n\n"
@@ -196,7 +197,7 @@ async def call_tool(name: str, arguments: Any) -> List[TextContent | ImageConten
         function = arguments.get("function")
         
         if not all([file1, file2, function]):
-            return [TextContent(type="text", text="Error: 'file1', 'file2', and 'function' parameters are required")]
+            return [types.TextContent(type="text", text="Error: 'file1', 'file2', and 'function' parameters are required")]
             
         unwind = arguments.get("unwind", 10)
         inputs = arguments.get("inputs", [])
@@ -241,7 +242,7 @@ int main() {{
             
             equivalence = "EQUIVALENT" if result['success'] else "NOT EQUIVALENT"
             
-            return [TextContent(
+            return [types.TextContent(
                 type="text",
                 text=f"Equivalence Checking Results:\n\n"
                      f"Files: {file1} vs {file2}\n"
@@ -255,7 +256,7 @@ int main() {{
             os.unlink(harness_path)
     
     else:
-        return [TextContent(
+        return [types.TextContent(
             type="text",
             text=f"Unknown tool: {name}"
         )]
@@ -268,11 +269,18 @@ async def main():
     async with stdio_server() as (read_stream, write_stream):
         logger.info("Created stdio transport")
         try:
-            # Run server with empty initialization options
+            # Run server with proper initialization options
             await server.run(
-                read_stream=read_stream,
-                write_stream=write_stream,
-                initialization_options={}
+                read_stream,
+                write_stream,
+                InitializationOptions(
+                    server_name="cbmc-mcp",
+                    server_version="0.1.0",
+                    capabilities=server.get_capabilities(
+                        notification_options=NotificationOptions(),
+                        experimental_capabilities={},
+                    ),
+                ),
             )
         except Exception as e:
             logger.error(f"Server error: {e}", exc_info=True)

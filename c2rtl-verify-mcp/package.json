@@ -1,0 +1,31 @@
+{
+  "name": "c2rtl-verify-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for formal verification between C and RTL (Verilog/VHDL)",
+  "main": "server.py",
+  "scripts": {
+    "start": "python3 server.py"
+  },
+  "keywords": [
+    "mcp",
+    "c2rtl",
+    "formal-verification",
+    "equivalence-checking",
+    "hls",
+    "hardware-software-codesign"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "mcp": {
+    "name": "c2rtl-verify-mcp",
+    "description": "C to RTL formal verification tools",
+    "version": "1.0.0",
+    "tools": [
+      "c2rtl_equivalence",
+      "c2rtl_hls_verify",
+      "c2rtl_generate_assertions",
+      "c2rtl_cosim"
+    ]
+  }
+}
