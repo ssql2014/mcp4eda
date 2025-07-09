@@ -463,30 +463,80 @@ async def parse_natural_language_query(query: str, context: Dict) -> Dict[str, A
     rtl_files = context.get("rtl_files", [])
     
     # Equivalence checking queries
-    if any(word in query_lower for word in ["equivalent", "same", "match", "compare"]):
+    equiv_keywords = ["equivalent", "same", "match", "compare", "equiv", "verify", "check if", "are these"]
+    if any(word in query_lower for word in equiv_keywords):
         if c_files and rtl_files:
-            # Extract function/module names if mentioned
-            func_match = re.search(r'function\s+(\w+)', query_lower)
-            module_match = re.search(r'module\s+(\w+)', query_lower)
+            # Extract function/module names with multiple patterns
+            func_patterns = [
+                r'function\s+["\']?(\w+)["\']?',
+                r'["\'](\w+)["\']?\s+function',
+                r'func\s+(\w+)',
+                r'(\w+)\s+in\s+\w+\.c'
+            ]
+            module_patterns = [
+                r'module\s+["\']?(\w+)["\']?',
+                r'["\'](\w+)["\']?\s+module',
+                r'mod\s+(\w+)',
+                r'(\w+)\s+in\s+\w+\.v'
+            ]
+            
+            func_name = None
+            for pattern in func_patterns:
+                match = re.search(pattern, query_lower)
+                if match:
+                    func_name = match.group(1)
+                    break
+            
+            module_name = None
+            for pattern in module_patterns:
+                match = re.search(pattern, query_lower)
+                if match:
+                    module_name = match.group(1)
+                    break
+            
+            # Extract method preference
+            method = "verilator-cbmc"
+            if "symbiyosys" in query_lower or "sby" in query_lower:
+                method = "symbiyosys"
+            elif "yosys" in query_lower:
+                method = "yosys-sby"
+            
+            # Extract depth if specified
+            depth = 20
+            depth_match = re.search(r'depth\s+(\d+)', query_lower)
+            if depth_match:
+                depth = int(depth_match.group(1))
             
             return {
                 "action": "equivalence",
                 "params": {
                     "c_file": c_files[0],
                     "rtl_file": rtl_files[0],
-                    "c_function": func_match.group(1) if func_match else "main",
-                    "rtl_module": module_match.group(1) if module_match else "top"
+                    "c_function": func_name or "main",
+                    "rtl_module": module_name or "top",
+                    "method": method,
+                    "depth": depth
                 }
             }
     
     # Property mining queries
-    elif any(word in query_lower for word in ["find properties", "mine", "discover", "extract"]):
+    prop_keywords = ["properties", "property", "mine", "discover", "extract", "find", "invariant", "temporal", "relationship"]
+    elif any(word in query_lower for word in prop_keywords):
+        # Determine mining strategy
+        strategy = "all"
+        if "invariant" in query_lower:
+            strategy = "invariants"
+        elif "temporal" in query_lower or "timing" in query_lower:
+            strategy = "temporal"
+        elif "relationship" in query_lower or "correlation" in query_lower:
+            strategy = "relationships"
+        
         return {
             "action": "property_mining",
             "params": {
                 "c_file": c_files[0] if c_files else None,
                 "rtl_file": rtl_files[0] if rtl_files else None,
-                "mining_strategy": "all"
+                "mining_strategy": strategy
             }
         }
     
@@ -660,16 +710,57 @@ async def call_tool(name: str, arguments: Any) -> List[types.TextContent]:
                 type="text",
                 text="""C2RTL Verification Natural Language Interface
 
-I can help you with:
-1. **Equivalence Checking**: "Check if function.c and module.v are equivalent"
-2. **Property Mining**: "Find properties in my C and RTL code"
-3. **Coverage Analysis**: "What's the branch coverage of my verification?"
-4. **Debug Failed Verification**: "Debug why the verification failed"
-5. **Generate Reports**: "Create a PDF report of all verifications"
-6. **Bounded Model Checking**: "Run BMC with depth 50"
-7. **K-Induction**: "Prove equivalence using k-induction with k=5"
+I understand natural language queries for C-to-RTL verification. Here are examples:
 
-Please provide C and RTL files in the context for most operations."""
+## Basic Verification
+• "Check if adder.c and adder.v are equivalent"
+• "Verify that my C and RTL match"
+• "Are these two implementations the same?"
+• "Compare function 'encrypt' with module 'aes_core'"
+
+## Property Discovery
+• "Find properties in my code"
+• "Discover invariants in the design"
+• "Mine temporal properties"
+• "What relationships exist between inputs and outputs?"
+
+## Coverage Analysis
+• "What's the coverage?"
+• "Show branch coverage"
+• "Check FSM state coverage"
+• "Analyze toggle coverage"
+
+## Debugging
+• "Debug why verification failed"
+• "Explain the failure"
+• "Minimize the counterexample"
+• "Show the execution trace"
+
+## Advanced Verification
+• "Run BMC with depth 100"
+• "Prove using k-induction with k=10"
+• "Use SymbiYosys for verification"
+• "Check with Verilator+CBMC method"
+
+## Reports
+• "Generate a report"
+• "Create PDF summary"
+• "Export results as HTML"
+
+## Tips
+- Include file paths in context
+- Specify function/module names when known
+- Add verification depth for BMC
+- Reference verification IDs for debugging
+
+Example with context:
+{
+  "query": "verify the add function matches the adder module",
+  "context": {
+    "c_files": ["math.c"],
+    "rtl_files": ["alu.v"]
+  }
+}"""
             )]
     
     elif name == "c2rtl_equivalence":

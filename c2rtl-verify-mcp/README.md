@@ -106,17 +106,35 @@ claude mcp add --scope user c2rtl-verify python3 /Users/qlss/Documents/mcp4eda/c
 ## Natural Language Usage Examples
 
 ### Basic Queries
-- "Check if adder.c and adder.v are equivalent"
-- "Find properties in my filter implementation"
-- "What's the branch coverage of my verification?"
-- "Debug why the last verification failed"
-- "Generate an HTML report of all verifications"
+```
+✓ "Check if adder.c and adder.v are equivalent"
+✓ "Verify that my C and RTL match"
+✓ "Are these two implementations the same?"
+✓ "Find properties in my filter implementation"
+✓ "What's the branch coverage?"
+✓ "Debug why verification failed"
+✓ "Generate a report"
+```
 
 ### Advanced Queries
-- "Run bounded model checking with depth 50 on my design"
-- "Prove correctness using k-induction with k=5"
-- "Find all temporal properties in the RTL"
-- "Minimize the counterexample from the failed verification"
+```
+✓ "Check equivalence using SymbiYosys with depth 30"
+✓ "Run BMC with bound 100"
+✓ "Prove using k-induction where k=5"
+✓ "Mine temporal properties from the state machine"
+✓ "Explain why the verification failed"
+✓ "Generate a PDF report of today's results"
+```
+
+### Smart Context Understanding
+```
+✓ "Verify the add function" (finds add in C files)
+✓ "Check the adder module" (finds adder in RTL files)
+✓ "Debug the last failure" (uses recent verification)
+✓ "Show coverage gaps" (analyzes current results)
+```
+
+See [NATURAL_LANGUAGE_EXAMPLES.md](NATURAL_LANGUAGE_EXAMPLES.md) for comprehensive examples and [QUICK_REFERENCE.md](QUICK_REFERENCE.md) for a quick reference guide.
 
 ### Example with Context
 ```json
