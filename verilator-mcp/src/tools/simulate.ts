@@ -56,66 +56,82 @@ export class SimulateTool extends AbstractTool<SimulateParams, SimulationResult>
     params: SimulateParams
   ): Promise<ToolResult<SimulationResult>> {
     try {
-      // Step 1: Check if testbench exists or needs generation
+      // Step 1: Determine if design is a directory or file
+      let designFile: string;
+      let isCompiledDir = false;
+      let buildDir: string = '';
+      let executablePath: string = '';
+      
+      // Check if design is a directory
+      const designStat = await fs.stat(params.design);
+      if (designStat.isDirectory()) {
+        isCompiledDir = true;
+        buildDir = params.design;
+        
+        // Look for executable in the directory
+        const moduleName = params.topModule || await this.detectTopModuleFromDir(buildDir);
+        executablePath = join(buildDir, `V${moduleName}`);
+        
+        // Check if executable exists
+        try {
+          await fs.access(executablePath);
+          logger.info(`Found executable: ${executablePath}`);
+        } catch {
+          // Try without V prefix
+          executablePath = join(buildDir, moduleName);
+          try {
+            await fs.access(executablePath);
+          } catch {
+            throw new Error(`Cannot find executable for module ${moduleName} in ${buildDir}`);
+          }
+        }
+        
+        // For testbench generation, we need the original design file
+        // Try to find it from the build directory
+        designFile = await this.findDesignFile(buildDir, moduleName);
+      } else {
+        designFile = params.design;
+        isCompiledDir = false;
+      }
+
+      // Step 2: Check if testbench exists or needs generation
       let testbenchFile = params.testbench;
       let generatedTestbench = false;
 
-      if (!testbenchFile && params.autoGenerateTestbench) {
+      if (!testbenchFile && params.autoGenerateTestbench && !params.useExistingBuild) {
         logger.info('No testbench provided, generating one automatically...');
         
         // Determine module name
-        const moduleName = params.topModule || await this.detectTopModule(params.design);
+        const moduleName = params.topModule || await this.detectTopModule(designFile);
         
-        // Generate testbench
-        const tbResult = await this.testbenchGenerator.execute({
-          targetFile: params.design,
-          targetModule: moduleName,
-          outputFile: join(params.outputDir, `tb_${moduleName}.sv`),
-          template: 'basic',
-          stimulusType: 'directed',
-          simulationTime: params.simulationTime || 10000,
-          generateAssertions: params.enableAssertions,
-          generateCoverage: params.enableCoverage,
-        });
+        // Generate C++ testbench for Verilator
+        const tbResult = await this.generateCppTestbench(
+          designFile,
+          moduleName,
+          params
+        );
 
-        if (!tbResult.success || !tbResult.data) {
-          throw new Error('Failed to generate testbench: ' + (tbResult.error || 'Unknown error'));
-        }
-
-        testbenchFile = tbResult.data.generatedFile;
+        testbenchFile = tbResult.testbenchFile;
         generatedTestbench = true;
       }
 
-      // Step 2: Compile design and testbench if needed
-      let executablePath: string;
-      let buildDir: string;
-
-      if (params.useExistingBuild) {
-        // Use existing build
-        buildDir = params.design.endsWith('_dir') ? params.design : 'obj_dir';
-        const moduleName = params.topModule || 'top';
-        executablePath = join(buildDir, `V${moduleName}`);
-        
-        // Verify executable exists
-        await fs.access(executablePath);
-      } else {
+      // Step 3: Compile design and testbench if needed
+      if (!params.useExistingBuild && !isCompiledDir) {
         // Compile design and testbench
         logger.info('Compiling design and testbench...');
         
-        const files = [params.design];
-        if (testbenchFile) {
-          files.push(testbenchFile);
-        }
-
+        const files = [designFile];
+        
         const compileResult = await this.compiler.execute({
           files,
-          topModule: testbenchFile ? `tb_${params.topModule || 'top'}` : params.topModule,
+          topModule: params.topModule,
           outputDir: join(params.outputDir, 'obj_dir'),
           optimization: params.optimizationLevel,
           trace: params.enableWaveform,
           traceFormat: params.waveformFormat as 'vcd' | 'fst',
           coverage: params.enableCoverage,
           defines: params.defines,
+          mainFile: testbenchFile,
         });
 
         if (!compileResult.success || !compileResult.data) {
@@ -126,11 +142,11 @@ export class SimulateTool extends AbstractTool<SimulateParams, SimulationResult>
         executablePath = compileResult.data.executable || join(compileResult.data.outputDir, `V${params.topModule || 'top'}`);
       }
 
-      // Step 3: Run simulation
+      // Step 4: Run simulation
       logger.info('Running simulation...');
       const simResult = await this.runSimulation(executablePath, params);
 
-      // Step 4: Process results
+      // Step 5: Process results
       const result: SimulationResult = {
         passed: simResult.exitCode === 0,
         simulationTime: params.simulationTime || 10000,
@@ -154,21 +170,24 @@ export class SimulateTool extends AbstractTool<SimulateParams, SimulationResult>
         const waveformName = params.waveformFile || `simulation.${params.waveformFormat}`;
         result.waveformFile = join(params.outputDir, waveformName);
         
-        // Move waveform file if it was generated in a different location
-        try {
-          const defaultWaveform = join(dirname(executablePath), waveformName);
-          if (await this.fileExists(defaultWaveform)) {
-            await fs.rename(defaultWaveform, result.waveformFile!);
+        // Check multiple possible locations for waveform
+        const possibleWaveformPaths = [
+          waveformName,
+          join(dirname(executablePath), waveformName),
+          join(params.outputDir, waveformName),
+        ];
+        
+        for (const path of possibleWaveformPaths) {
+          if (await this.fileExists(path) && path !== result.waveformFile) {
+            await fs.rename(path, result.waveformFile!);
+            break;
           }
-        } catch {
-          // Waveform might already be in the right place
         }
       }
 
       // Handle coverage
       if (params.enableCoverage) {
         result.coverageFile = join(params.outputDir, 'coverage.dat');
-        // Verilator coverage data would need to be processed
       }
 
       // Parse assertions
@@ -197,17 +216,149 @@ export class SimulateTool extends AbstractTool<SimulateParams, SimulationResult>
     }
   }
 
-  private async detectTopModule(designFile: string): Promise<string> {
-    // Simple detection - look for module declaration
-    const content = await fs.readFile(designFile, 'utf-8');
-    const moduleMatch = content.match(/module\s+(\w+)\s*(?:#|\()/);
+  private async generateCppTestbench(
+    designFile: string,
+    moduleName: string,
+    params: SimulateParams
+  ): Promise<{ testbenchFile: string }> {
+    const outputDir = params.outputDir;
+    await fs.mkdir(outputDir, { recursive: true });
     
-    if (moduleMatch) {
-      return moduleMatch[1];
+    const testbenchFile = join(outputDir, `tb_${moduleName}.cpp`);
+    
+    // Generate a basic C++ testbench for Verilator
+    const testbenchContent = `#include <verilated.h>
+#include <verilated_vcd_c.h>
+#include "V${moduleName}.h"
+#include <iostream>
+#include <memory>
+
+vluint64_t sim_time = 0;
+
+double sc_time_stamp() {
+    return sim_time;
+}
+
+int main(int argc, char** argv) {
+    Verilated::commandArgs(argc, argv);
+    
+    // Create DUT instance
+    auto dut = std::make_unique<V${moduleName}>();
+    
+    // Create trace
+    ${params.enableWaveform ? `Verilated::traceEverOn(true);
+    auto trace = std::make_unique<VerilatedVcdC>();
+    dut->trace(trace.get(), 5);
+    trace->open("${params.waveformFile || 'simulation.vcd'}");` : ''}
+    
+    // Initialize signals
+    dut->clk = 0;
+    dut->rst_n = 0;
+    
+    // Reset sequence
+    for (int i = 0; i < 10; i++) {
+        dut->clk = !dut->clk;
+        dut->eval();
+        ${params.enableWaveform ? 'trace->dump(sim_time++);' : 'sim_time++;'}
+    }
+    dut->rst_n = 1;
+    
+    std::cout << "Simulation started\\n";
+    
+    // Run simulation
+    for (int i = 0; i < ${params.simulationTime || 10000}; i++) {
+        dut->clk = !dut->clk;
+        dut->eval();
+        ${params.enableWaveform ? 'trace->dump(sim_time++);' : 'sim_time++;'}
+    }
+    
+    // Final cleanup
+    dut->final();
+    ${params.enableWaveform ? 'trace->close();' : ''}
+    
+    std::cout << "Simulation complete\\n";
+    std::cout << "Total cycles: " << sim_time << "\\n";
+    
+    return 0;
+}`;
+
+    await fs.writeFile(testbenchFile, testbenchContent);
+    logger.info(`Generated C++ testbench: ${testbenchFile}`);
+    
+    return { testbenchFile };
+  }
+
+  private async detectTopModule(designFile: string): Promise<string> {
+    try {
+      // Read the design file
+      const content = await fs.readFile(designFile, 'utf-8');
+      const moduleMatch = content.match(/module\s+(\w+)\s*(?:#|\()/);
+      
+      if (moduleMatch) {
+        return moduleMatch[1];
+      }
+    } catch (error) {
+      logger.warn(`Could not read design file: ${error}`);
     }
 
     // Default to filename without extension
     return basename(designFile, '.v').replace(/\.(sv|verilog|systemverilog)$/, '');
+  }
+
+  private async detectTopModuleFromDir(buildDir: string): Promise<string> {
+    // Look for executable files or Makefile to determine module name
+    try {
+      const files = await fs.readdir(buildDir);
+      
+      // Look for V* executables
+      const vExecutables = files.filter(f => f.startsWith('V') && !f.includes('.'));
+      if (vExecutables.length > 0) {
+        return vExecutables[0].substring(1); // Remove 'V' prefix
+      }
+      
+      // Look for Makefile
+      if (files.includes('Vuart_apb.mk')) {
+        return 'uart_apb';
+      }
+      
+      // Look for header files
+      const headers = files.filter(f => f.endsWith('.h') && f.startsWith('V'));
+      if (headers.length > 0) {
+        const mainHeader = headers.find(h => !h.includes('__'));
+        if (mainHeader) {
+          return mainHeader.substring(1, mainHeader.length - 2); // Remove 'V' and '.h'
+        }
+      }
+    } catch (error) {
+      logger.warn(`Could not detect module from directory: ${error}`);
+    }
+    
+    return 'top';
+  }
+
+  private async findDesignFile(buildDir: string, moduleName: string): Promise<string> {
+    // Try to find the original design file
+    // This is a heuristic approach
+    const possiblePaths = [
+      `../../rtl/${moduleName}.v`,
+      `../../rtl/${moduleName}.sv`,
+      `../../src/${moduleName}.v`,
+      `../../src/${moduleName}.sv`,
+      `../../../rtl/${moduleName}.v`,
+      `../../../rtl/${moduleName}.sv`,
+      `../../../rtl/uart/${moduleName}.v`,
+      `../../../rtl/uart/${moduleName}.sv`,
+    ];
+    
+    for (const relativePath of possiblePaths) {
+      const fullPath = join(buildDir, relativePath);
+      if (await this.fileExists(fullPath)) {
+        return fullPath;
+      }
+    }
+    
+    // If we can't find it, return a placeholder
+    throw new Error(`Cannot find design file for module ${moduleName}`);
   }
 
   private async runSimulation(

@@ -1,0 +1,32 @@
+{
+  "name": "cbmc-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for CBMC (C Bounded Model Checker) - provides verification and equivalence checking tools",
+  "main": "server.py",
+  "scripts": {
+    "start": "python server.py"
+  },
+  "keywords": [
+    "mcp",
+    "cbmc",
+    "verification",
+    "model-checking",
+    "equivalence-checking",
+    "formal-methods"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "mcp": {
+    "name": "cbmc-mcp",
+    "description": "CBMC verification and equivalence checking tools",
+    "version": "1.0.0",
+    "tools": [
+      "cbmc_verify",
+      "cbmc_equivalence",
+      "cbmc_show_properties",
+      "cbmc_generate_tests",
+      "cbmc_natural_language"
+    ]
+  }
+}
